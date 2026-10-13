@@ -106,6 +106,12 @@ jobs:
       - name: CMake install
         run: pixi run install-${{ env.config }}
 
+      - name: BruceWorx version check
+        run: |
+          out="$(pixi run FreeCADCmd --version)"
+          echo "$out"
+          echo "$out" | grep -F "1.1.4-bw.1"
+
       # Same as upstream sub_buildPixi.yml: Python CLI tests on the installed build.
       # (Upstream's GUI-on-install test is disabled there for Qt6; we follow suit.)
       - name: FreeCAD CLI tests on install
@@ -204,6 +210,12 @@ jobs:
 
       - name: CMake install
         run: pixi run install-${{ env.config }}
+
+      - name: BruceWorx version check
+        run: |
+          out="$(pixi run FreeCADCmd --version)"
+          echo "$out"
+          echo "$out" | grep -F "1.1.4-bw.1"
 
       # Same as upstream sub_buildPixi.yml: Python CLI tests on the installed build.
       # (Upstream's GUI-on-install test is disabled there for Qt6; we follow suit.)
