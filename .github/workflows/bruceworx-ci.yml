@@ -278,3 +278,52 @@ jobs:
           path: |
             ${{ env.logdir }}
             ${{ env.reportdir }}
+
+  macos-arm64-dmg:
+    name: macOS arm64 .dmg (unsigned, internal)
+    needs: macos-arm64
+    if: vars.BW_MAC_RUNNER == 'true'
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 360
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/ccache
+      CCACHE_CONFIGPATH: ${{ github.workspace }}/ccache/config
+      cacheKey: bw-pixi-macos-arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          submodules: recursive
+
+      - uses: prefix-dev/setup-pixi@82d477f15f3a381dbcc8adc1206ce643fe110fb7 # v0.9.3
+        with:
+          pixi-version: v0.59.0
+          cache: false
+
+      - name: Restore compiler cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: FC-${{ env.cacheKey }}-${{ github.ref }}-${{ github.run_id }}
+          restore-keys: |
+            FC-${{ env.cacheKey }}-${{ github.ref }}-
+            FC-${{ env.cacheKey }}-refs/heads/main-
+            FC-${{ env.cacheKey }}-
+
+      - name: Configure, build, install
+        run: |
+          pixi run configure-${{ env.config }}
+          pixi run build-${{ env.config }}
+          pixi run install-${{ env.config }}
+
+      - name: Make .dmg
+        env:
+          BW_ADHOC_SIGN: "1"
+        run: pixi run bash package/bruceworx/make-dmg.sh "" dist
+
+      - name: Upload .dmg
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: FreeCAD-BruceWorx-macOS-arm64-dmg
+          path: dist/*.dmg
+          if-no-files-found: error

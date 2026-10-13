@@ -103,6 +103,24 @@ pixi run install-release     # cmake --install build/release (into the pixi env 
 * **macOS arm64** (self-hosted runner labelled `self-hosted, macOS, ARM64`):
   the same steps. This job runs only when the repository variable
   `BW_MAC_RUNNER` is set to `true`, and is skipped otherwise.
+* **macOS arm64 .dmg** (same self-hosted runner, same `BW_MAC_RUNNER` gate,
+  runs after the macOS job): builds, installs, runs
+  `package/bruceworx/make-dmg.sh` and uploads the `.dmg` as the
+  `FreeCAD-BruceWorx-macOS-arm64-dmg` artifact.
+
+## 7. macOS arm64 .dmg (internal use only)
+
+```sh
+pixi run install-release
+pixi run bash package/bruceworx/make-dmg.sh          # -> dist/FreeCAD-BruceWorx-1.1.4-bw.1-macOS-arm64.dmg
+BW_ADHOC_SIGN=1 pixi run bash package/bruceworx/make-dmg.sh   # optional ad-hoc codesign
+```
+
+The script copies the pixi install prefix (`$CONDA_PREFIX`) into
+`FreeCAD BruceWorx.app/Contents/Resources`, adds a launcher and `Info.plist`,
+and packs it with `hdiutil`. It is **unsigned** (at most ad-hoc signed) and
+**not notarized**: for internal machines only. On first launch, right-click the
+app and choose Open, or run `xattr -dr com.apple.quarantine "/Applications/FreeCAD BruceWorx.app"`.
 
 ## References
 * Upstream developer guide: https://freecad.github.io/DevelopersHandbook/gettingstarted/
