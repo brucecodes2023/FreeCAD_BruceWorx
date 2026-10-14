@@ -349,3 +349,116 @@ jobs:
           name: FreeCAD-BruceWorx-macOS-arm64-dmg
           path: dist/*.dmg
           if-no-files-found: error
+
+  # Manual-only: GitHub-hosted Apple Silicon build -> unsigned .dmg -> STEP import
+  # check against the packaged app's FreeCADCmd. Independent of BW_MAC_RUNNER.
+  macos-arm64-hosted-dmg:
+    name: macOS arm64 hosted .dmg + STEP check (manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-15
+    timeout-minutes: 350
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/ccache
+      CCACHE_CONFIGPATH: ${{ github.workspace }}/ccache/config
+      builddir: ${{ github.workspace }}/build/release/
+      logdir: ${{ github.workspace }}/logs/
+      cacheKey: bw-pixi-macos-15-arm64
+      BW_ARTIFACT: FreeCAD_BruceWorx-1.1.4-bw.1-macos-arm64-unsigned
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          submodules: recursive
+
+      - name: Add problem matcher
+        run: echo "::add-matcher::${{ github.workspace }}/.github/problemMatcher/clang.json"
+
+      - name: Make directories
+        run: mkdir -p "$builddir" "$logdir"
+
+      - uses: prefix-dev/setup-pixi@82d477f15f3a381dbcc8adc1206ce643fe110fb7 # v0.9.3
+        with:
+          pixi-version: v0.59.0
+          cache: false
+
+      - name: Restore compiler cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: FC-${{ env.cacheKey }}-${{ github.ref }}-${{ github.run_id }}
+          restore-keys: |
+            FC-${{ env.cacheKey }}-${{ github.ref }}-
+            FC-${{ env.cacheKey }}-refs/heads/main-
+            FC-${{ env.cacheKey }}-
+
+      - name: ccache stats (before)
+        run: |
+          pixi run ccache -z
+          pixi run ccache -p
+
+      - name: CMake configure
+        run: pixi run configure-${{ env.config }}
+
+      - name: CMake build
+        run: pixi run build-${{ env.config }}
+
+      - name: ccache stats (after)
+        if: always()
+        run: pixi run ccache -s
+
+      - name: Save compiler cache
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: FC-${{ env.cacheKey }}-${{ github.ref }}-${{ github.run_id }}
+
+      - name: CMake install
+        run: pixi run install-${{ env.config }}
+
+      - name: Make unsigned .dmg
+        run: pixi run bash package/bruceworx/make-dmg.sh "" dist
+
+      - name: BruceWorx STEP import check (packaged app FreeCADCmd)
+        shell: bash
+        run: |
+          set -o pipefail
+          dmg="$(ls dist/*.dmg | head -1)"
+          ls -lh "$dmg"
+          mnt="$RUNNER_TEMP/bwdmg"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$dmg"
+          cmd="$mnt/FreeCAD BruceWorx.app/Contents/Resources/bin/FreeCADCmd"
+          stepfile="${{ github.workspace }}/data/tests/Step/as1-ac-214.stp"
+          cat > "$RUNNER_TEMP/bw_step_check.py" <<'PY'
+          import sys, FreeCAD, Import
+          path = sys.argv[-1]
+          doc = FreeCAD.newDocument("bwstep")
+          Import.insert(path, doc.Name)
+          shapes = [o for o in doc.Objects if hasattr(o, "Shape") and not o.Shape.isNull()]
+          solids = sum(len(o.Shape.Solids) for o in shapes)
+          print("BW STEP check: file=%s objects=%d shapes=%d solids=%d" % (path, len(doc.Objects), len(shapes), solids))
+          if not shapes:
+              print("BW STEP check: FAIL - no shapes imported")
+              sys.exit(1)
+          print("BW STEP check: PASS")
+          PY
+          rc=0
+          "$cmd" "$RUNNER_TEMP/bw_step_check.py" --pass "$stepfile" 2>&1 | tee "${logdir}StepImportApp.log" || rc=$?
+          hdiutil detach "$mnt" || true
+          grep -q "BW STEP check: PASS" "${logdir}StepImportApp.log" || exit 1
+          grep "BW STEP check:" "${logdir}StepImportApp.log" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload unsigned .dmg
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: ${{ env.BW_ARTIFACT }}
+          path: dist/*.dmg
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: bw-macos-15-arm64-logs
+          path: ${{ env.logdir }}
