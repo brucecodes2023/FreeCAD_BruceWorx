@@ -282,7 +282,7 @@ jobs:
   macos-arm64-dmg:
     name: macOS arm64 .dmg (unsigned, internal)
     needs: macos-arm64
-    if: vars.BW_MAC_RUNNER == 'true'
+    if: vars.BW_MAC_RUNNER == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 360
     env:
