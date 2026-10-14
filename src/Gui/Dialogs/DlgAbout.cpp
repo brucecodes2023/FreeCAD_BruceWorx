@@ -217,7 +217,8 @@ void AboutDialog::setupLabels()
     // gets replaced to "<b>FreeCAD</b>", for example
 
     QString author = ui->labelAuthor->text();
-    author.replace(QStringLiteral("Unknown Application"), exeName);
+    // BruceWorx: identify this build
+    author.replace(QStringLiteral("Unknown Application"), QStringLiteral("%1 BruceWorx").arg(exeName));
     author.replace(QStringLiteral("(c) Unknown Author"), banner);
     ui->labelAuthor->setText(author);
     ui->labelAuthor->setUrl(mturl);

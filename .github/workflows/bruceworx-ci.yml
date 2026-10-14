@@ -106,6 +106,31 @@ jobs:
       - name: CMake install
         run: pixi run install-${{ env.config }}
 
+      # FreeCADCmd --version and FreeCAD.Version() print ExeVersion / Major.Minor.Point
+      # without BuildVersionSuffix (upstream behaviour), so fall back to the generated
+      # Version.h (FCVersionSuffix), which is what About/splash read via BuildVersionSuffix.
+      - name: BruceWorx version check
+        shell: bash
+        run: |
+          set +e
+          ver="$(pixi run FreeCADCmd -c "import FreeCAD; print(FreeCAD.Version())" 2>&1)"
+          echo "FreeCAD.Version() output:"
+          echo "$ver"
+          if echo "$ver" | grep -qF "bw.1"; then
+            echo "BW version check: PASS - suffix bw.1 found in FreeCAD.Version()"
+            exit 0
+          fi
+          echo "BW version check: bw.1 NOT in FreeCAD.Version(); checking generated Version.h"
+          hdr="${builddir}src/Build/Version.h"
+          if [ -f "$hdr" ] && grep -F 'FCVersionSuffix' "$hdr" | grep -qF -- "-bw.1"; then
+            echo "BW version check: PASS - suffix -bw.1 found in header $hdr:"
+            grep -F 'FCVersionSuffix' "$hdr"
+            exit 0
+          fi
+          echo "BW version check: FAIL - -bw.1 found in neither FreeCAD.Version() nor $hdr"
+          [ -f "$hdr" ] && grep -F 'FCVersion' "$hdr"
+          exit 1
+
       # Same as upstream sub_buildPixi.yml: Python CLI tests on the installed build.
       # (Upstream's GUI-on-install test is disabled there for Qt6; we follow suit.)
       - name: FreeCAD CLI tests on install
@@ -204,6 +229,31 @@ jobs:
 
       - name: CMake install
         run: pixi run install-${{ env.config }}
+
+      # FreeCADCmd --version and FreeCAD.Version() print ExeVersion / Major.Minor.Point
+      # without BuildVersionSuffix (upstream behaviour), so fall back to the generated
+      # Version.h (FCVersionSuffix), which is what About/splash read via BuildVersionSuffix.
+      - name: BruceWorx version check
+        shell: bash
+        run: |
+          set +e
+          ver="$(pixi run FreeCADCmd -c "import FreeCAD; print(FreeCAD.Version())" 2>&1)"
+          echo "FreeCAD.Version() output:"
+          echo "$ver"
+          if echo "$ver" | grep -qF "bw.1"; then
+            echo "BW version check: PASS - suffix bw.1 found in FreeCAD.Version()"
+            exit 0
+          fi
+          echo "BW version check: bw.1 NOT in FreeCAD.Version(); checking generated Version.h"
+          hdr="${builddir}src/Build/Version.h"
+          if [ -f "$hdr" ] && grep -F 'FCVersionSuffix' "$hdr" | grep -qF -- "-bw.1"; then
+            echo "BW version check: PASS - suffix -bw.1 found in header $hdr:"
+            grep -F 'FCVersionSuffix' "$hdr"
+            exit 0
+          fi
+          echo "BW version check: FAIL - -bw.1 found in neither FreeCAD.Version() nor $hdr"
+          [ -f "$hdr" ] && grep -F 'FCVersion' "$hdr"
+          exit 1
 
       # Same as upstream sub_buildPixi.yml: Python CLI tests on the installed build.
       # (Upstream's GUI-on-install test is disabled there for Qt6; we follow suit.)
