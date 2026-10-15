@@ -87,6 +87,14 @@ pixi run xvfb-run build/release/bin/FreeCAD -t 0   # GUI tests, Linux headless
 
 The C++ GoogleTest binaries are in `build/<config>/tests/*_tests_run`.
 
+STEP import smoke (after `pixi run install-release`):
+
+```sh
+pixi run FreeCADCmd package/bruceworx/step-import-check.py --pass data/tests/Step/as1-ac-214.stp
+```
+
+The script prints object, shape, and solid counts and exits non-zero when nothing is imported. CI uses the upstream file `data/tests/Step/as1-ac-214.stp`.
+
 ## 5. Install
 
 ```sh
@@ -95,18 +103,40 @@ pixi run install-release     # cmake --install build/release (into the pixi env 
 
 ## 6. CI
 
-`.github/workflows/bruceworx-ci.yml` runs these steps:
+`.github/workflows/bruceworx-ci.yml` is the BruceWorx build. The repository
+variable `BW_MAC_RUNNER` stays `false`: the self-hosted Apple Silicon jobs
+stay skipped. Leave that variable unset while the Mac is parked.
 
-* **Linux x86_64** (GitHub-hosted `ubuntu-latest`): configure-release,
-  build-release with a ccache cache, then the upstream C++ and Python test
-  actions.
-* **macOS arm64** (self-hosted runner labelled `self-hosted, macOS, ARM64`):
-  the same steps. This job runs only when the repository variable
-  `BW_MAC_RUNNER` is set to `true`, and is skipped otherwise.
-* **macOS arm64 .dmg** (same self-hosted runner, same `BW_MAC_RUNNER` gate,
-  runs after the macOS job): builds, installs, runs
-  `package/bruceworx/make-dmg.sh` and uploads the `.dmg` as the
-  `FreeCAD-BruceWorx-macOS-arm64-dmg` artifact.
+Jobs that run on pull requests and on pushes to `main`:
+
+* **Linux x86_64** (GitHub-hosted `ubuntu-latest`): `pixi install` from
+  `pixi.lock`, `configure-release`, `build-release` with ccache (cache key
+  `bw-pixi-linux-x86_64`), the upstream C++ and Python CLI tests, the `bw.1`
+  version check, and a STEP import of `data/tests/Step/as1-ac-214.stp` through
+  `package/bruceworx/step-import-check.py`.
+* **pixi lock** on `ubuntu-latest` and GitHub-hosted `macos-15` (Apple
+  Silicon): `pixi lock --check` on both, and `pixi install --locked` on
+  macOS so the `osx-arm64` environment from `pixi.lock` is installed without
+  a full compile. `macos-15` on GitHub is arm64.
+
+Manual job, `workflow_dispatch` only, GitHub-hosted `macos-15`. It does not
+read `BW_MAC_RUNNER` and does not use the self-hosted runner:
+
+* **macOS arm64 hosted build**: configure, build (ccache key
+  `bw-pixi-macos-15-arm64`), install, and the same STEP check on the installed
+  `FreeCADCmd`. [Run 38638134632](https://github.com/brucecodes2023/FreeCAD_BruceWorx/actions/runs/38638134632)
+  finished this path and the Linux job together. The packaged-app STEP check
+  reported 108 objects, 88 shapes, and 18 solids.
+* **Unsigned .dmg** runs only when the dispatch input `upload_dmg` is checked.
+  That path runs `package/bruceworx/make-dmg.sh`, repeats the STEP check
+  against the packaged `FreeCADCmd`, and uploads
+  `FreeCAD_BruceWorx-1.1.4-bw.1-macos-arm64-unsigned`. The image is about
+  1.7 GB; leave the input off unless you need the file.
+
+The self-hosted jobs `macos-arm64` and `macos-arm64-dmg` are still in the
+workflow, behind `vars.BW_MAC_RUNNER == 'true'`, on the labels
+`self-hosted, macOS, ARM64`. They upload `FreeCAD-BruceWorx-macOS-arm64-dmg`
+when that variable is true. It stays false.
 
 ## 7. macOS arm64 .dmg (internal use only)
 
