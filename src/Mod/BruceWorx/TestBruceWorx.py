@@ -93,8 +93,46 @@ class WidgetListTests(unittest.TestCase):
 
 
 class SyncTests(unittest.TestCase):
-    def test_default_off_does_not_touch_overlays(self):
+    def test_missing_pref_defaults_on_and_off_restores_stock(self):
         prefs, overlay, style, docks = _world()
+        left = overlay.GetGroup("OverlayLeft")
+        left.SetString("Widgets", "Report view,")
+        left.SetString("Sizes", "180")
+        style.SetString(BruceWorx.STYLE_KEY, "kept.qss")
+
+        state = BruceWorx.sync(prefs, overlay, style, QSS, BruceWorx.tree_dock_names(docks))
+        self.assertEqual(state, "on")
+        self.assertNotIn("FloatingModelTree", prefs.bools)
+        self.assertTrue(prefs.GetBool(BruceWorx.APPLIED_KEY, False))
+        self.assertEqual(left.GetString("Widgets"), "Model,")
+        self.assertEqual(style.GetString(BruceWorx.STYLE_KEY), QSS)
+        snapshot = prefs.GetString(BruceWorx.SNAPSHOT_KEY)
+
+        # Still on, key still missing: keep the original stock snapshot.
+        again = BruceWorx.sync(prefs, overlay, style, QSS, ["Model"])
+        self.assertEqual(again, "on")
+        self.assertEqual(prefs.GetString(BruceWorx.SNAPSHOT_KEY), snapshot)
+
+        prefs.SetBool("FloatingModelTree", False)
+        off = BruceWorx.sync(prefs, overlay, style, QSS, ["Model"])
+        self.assertEqual(off, "off")
+        self.assertEqual(left.GetString("Widgets"), "Report view,")
+        self.assertEqual(left.GetString("Sizes"), "180")
+        self.assertNotIn("Width", left.ints)
+        self.assertNotIn("AutoHide", left.bools)
+        self.assertNotIn("Transparent", left.bools)
+        self.assertEqual(style.GetString(BruceWorx.STYLE_KEY), "kept.qss")
+        self.assertNotIn(BruceWorx.SNAPSHOT_KEY, prefs.strings)
+        self.assertFalse(prefs.GetBool(BruceWorx.APPLIED_KEY, True))
+
+        stayed = BruceWorx.sync(prefs, overlay, style, QSS, ["Model"])
+        self.assertEqual(stayed, "noop")
+        self.assertEqual(left.GetString("Widgets"), "Report view,")
+        self.assertEqual(style.GetString(BruceWorx.STYLE_KEY), "kept.qss")
+
+    def test_explicit_off_before_apply_leaves_stock(self):
+        prefs, overlay, style, docks = _world()
+        prefs.SetBool("FloatingModelTree", False)
         state = BruceWorx.sync(prefs, overlay, style, QSS, BruceWorx.tree_dock_names(docks))
         self.assertEqual(state, "noop")
         self.assertEqual(overlay.groups, {})

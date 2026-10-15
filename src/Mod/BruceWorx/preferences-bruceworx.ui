@@ -15,7 +15,7 @@
       <item>
        <widget class="QLabel" name="labelMac">
         <property name="text">
-         <string>Unified title bar and toolbar, with the native close, minimize, and zoom buttons in that bar. Default off, so the stock window is unchanged. macOS only; other systems store the preference and ignore it.</string>
+         <string>On by default. Unified title bar and toolbar, with the native close, minimize, and zoom buttons in that bar. Uncheck to restore the stock title bar. macOS only; other systems store the preference and ignore it. Qt 6.8 documents painting problems for this mode when the window contains an OpenGL view (the 3D view) or when toolbars are moved. Confirm that on a Mac.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
@@ -25,13 +25,13 @@
       <item>
        <widget class="Gui::PrefCheckBox" name="UnifiedTitleAndToolBar">
         <property name="toolTip">
-         <string>Calls QMainWindow.setUnifiedTitleAndToolBarOnMac. Default off. Qt 6.8 documents painting problems for this mode when the window contains an OpenGL view, which the 3D view is, so confirm it on a Mac before leaving it on.</string>
+         <string>On by default. Calls QMainWindow.setUnifiedTitleAndToolBarOnMac. Uncheck to set that property false, which is Qt stock. Known risk: Qt 6.8 documents painting problems when the window contains an OpenGL view or movable toolbars. Verify on a Mac.</string>
         </property>
         <property name="text">
          <string>Unified title bar and toolbar on macOS</string>
         </property>
         <property name="checked">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
         <property name="prefEntry" stdset="0">
          <cstring>UnifiedTitleAndToolBar</cstring>
@@ -53,7 +53,7 @@
       <item>
        <widget class="QLabel" name="labelTree">
         <property name="text">
-         <string>Puts the model tree on the existing left overlay panel (auto-hide, transparency, width, and insets below). Default off. Turning it off writes the previous overlay settings back, which restores the stock docks. The panel stays pinned to the left edge; a free-floating position needs a later OverlayManager change.</string>
+         <string>On by default. Puts the model tree on the existing left overlay panel (auto-hide, transparency, width, and insets below). Uncheck to write the previous overlay settings back and restore the stock docks. The panel stays pinned to the left edge; a free-floating position needs a later OverlayManager change.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
@@ -63,13 +63,13 @@
       <item>
        <widget class="Gui::PrefCheckBox" name="FloatingModelTree">
         <property name="toolTip">
-         <string>Overlay the Model dock (or Tree view, if the panels are split). Default off.</string>
+         <string>On by default. Overlay the Model dock (or Tree view, if the panels are split). Uncheck to restore the stock docks.</string>
         </property>
         <property name="text">
          <string>Overlay the model tree</string>
         </property>
         <property name="checked">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
         <property name="prefEntry" stdset="0">
          <cstring>FloatingModelTree</cstring>

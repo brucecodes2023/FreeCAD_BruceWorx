@@ -4,10 +4,11 @@
 Uses FreeCAD's existing overlay dock parameters and one QSS file. No
 OverlayManager or DockWindowManager edits.
 
-While the preference is on, the model dock is listed on OverlayLeft with
-AutoHide, Transparent, Width, and the offset parameters. Turning it off
-writes the previous parameter values back, and the overlay reload puts
-those docks back where they were.
+BruceWorx turns this on when FloatingModelTree is missing. While it is on,
+the model dock is listed on OverlayLeft with AutoHide, Transparent, Width,
+and the offset parameters. The first apply snapshots the previous overlay
+parameters. Turning the preference off writes that snapshot back, and the
+overlay reload puts those docks back where they were.
 
 Spike gap (FCB-P1F-11, not done here): the left overlay is pinned to the
 edge. OverlayTabWidget::setRect moves a left panel to x=0, so Offset3 (the
@@ -229,7 +230,7 @@ def sync(prefs, overlay_root, style_group, qss_path, tree_names):
 
 
 def _sync_unlocked(prefs, overlay_root, style_group, qss_path, tree_names):
-    want = bool(prefs.GetBool("FloatingModelTree", False))
+    want = bool(prefs.GetBool("FloatingModelTree", True))
     applied = bool(prefs.GetBool(APPLIED_KEY, False))
     has_snapshot = _has_string(prefs, SNAPSHOT_KEY)
 
@@ -305,7 +306,7 @@ class _PrefObserver:
 
 
 def install():
-    """Register the preference page and apply the current (default off) state."""
+    """Register the preference page and apply the current (default on) state."""
     global _installed, _observer
     if _installed:
         return

@@ -325,8 +325,6 @@ struct MainWindowP
     ParameterGrp::handle hGrp;
     bool _restoring = false;
     QTime _showNormal;
-    /// [BW] True after setUnifiedTitleAndToolBarOnMac(true) in this session.
-    bool unifiedTitleBarApplied = false;
     void restoreWindowState(const QByteArray&);
 };
 
@@ -1034,28 +1032,20 @@ void MainWindow::activatePreviousWindow()
 
 void MainWindow::applyMacUnifiedTitleBar()
 {
-    // [BW] FCB-P1F-02. Default off, so this returns without calling Qt and
-    // stock window chrome stays whatever Qt/FreeCAD already use.
+    // [BW] FCB-P1F-02. Missing key means on. Explicit false sets the property
+    // false, which is Qt's stock value (useUnifiedToolBar starts false).
     //
-    // setUnifiedTitleAndToolBarOnMac(true) asks Qt for the unified title and
-    // toolbar. This window keeps Qt::Window, so it does not draw its own
-    // close / minimize / zoom buttons. The call is a no-op off macOS.
-    // Qt 6.8 documents painting errors in this mode for QOpenGLWidget and for
-    // movable toolbars. FreeCAD has both, which is why the preference defaults
-    // off. Not visually checked: this environment has no macOS display.
+    // This window keeps Qt::Window, so the close / minimize / zoom buttons
+    // stay the platform widgets. The call is a no-op off macOS.
+    //
+    // Known risk (Qt 6.8 docs): unified mode can paint wrong with
+    // QOpenGLWidget, which the 3D view is, and with movable toolbars.
+    // Confirm on a Mac. Not checked here: this environment has no macOS display.
     if (!d->hGrp) {
         return;
     }
-    const bool enable = d->hGrp->GetBool("UnifiedTitleAndToolBar", false);
-    if (!enable) {
-        if (d->unifiedTitleBarApplied) {
-            setUnifiedTitleAndToolBarOnMac(false);
-            d->unifiedTitleBarApplied = false;
-        }
-        return;
-    }
-    setUnifiedTitleAndToolBarOnMac(true);
-    d->unifiedTitleBarApplied = true;
+    const bool enable = d->hGrp->GetBool("UnifiedTitleAndToolBar", true);
+    setUnifiedTitleAndToolBarOnMac(enable);
 }
 
 void MainWindow::activateWorkbench(const QString& name)
@@ -1075,7 +1065,7 @@ void MainWindow::activateWorkbench(const QString& name)
     Q_EMIT workbenchActivated(name);
     updateActions(true);
 
-    // [BW] Workbench switches rebuild top toolbars. Re-apply while the pref is on.
+    // [BW] Workbench switches rebuild top toolbars. Re-apply, or clear it if off.
     applyMacUnifiedTitleBar();
 }
 
