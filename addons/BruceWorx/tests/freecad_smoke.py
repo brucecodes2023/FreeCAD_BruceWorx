@@ -74,8 +74,14 @@ def run() -> None:
     config = os.path.join(SMOKE_DIR, "numbering.json")
     example = os.path.join(_ROOT, "config", "numbering.example.json")
     shutil.copyfile(example, config)
+    # The example points at document_types.json beside the numbering file.
+    shutil.copyfile(
+        os.path.join(_ROOT, "config", "document_types.json"),
+        os.path.join(SMOKE_DIR, "document_types.json"),
+    )
     # Default save name is the part number. FreeCAD reloads Document.Label
     # from that file name.
+    part_number = "LE-01-01001-001-A"
     _check(
         main(
             [
@@ -84,24 +90,26 @@ def run() -> None:
                 fcstd,
                 "--program",
                 "LE",
+                "--document-type",
+                "01",
                 "--config",
                 config,
             ]
         ),
         "rename",
     )
-    renamed = os.path.join(SMOKE_DIR, "LE-01001-A.FCStd")
+    renamed = os.path.join(SMOKE_DIR, part_number + ".FCStd")
     if not os.path.isfile(renamed):
         raise RuntimeError(f"expected renamed file at {renamed}")
     numbered = FreeCAD.openDocument(renamed)
-    if numbered.Label != "LE-01001-A":
+    if numbered.Label != part_number:
         raise RuntimeError(f"document label is {numbered.Label!r}")
     numbered_box = numbered.getObject("Box")
-    if numbered_box is None or numbered_box.Label != "LE-01001-A":
-        raise RuntimeError("Box label was not set to LE-01001-A")
+    if numbered_box is None or numbered_box.Label != part_number:
+        raise RuntimeError(f"Box label was not set to {part_number}")
     # Hyphens are not legal in an internal Name, so the reopened document is
-    # LE_01001_A while Label keeps LE-01001-A.
-    if numbered.Name != "LE_01001_A":
+    # LE_01_01001_001_A while Label keeps LE-01-01001-001-A.
+    if numbered.Name != "LE_01_01001_001_A":
         raise RuntimeError(f"internal document name is {numbered.Name!r}")
     FreeCAD.closeDocument(numbered.Name)
     print("BW_SMOKE PASS", flush=True)

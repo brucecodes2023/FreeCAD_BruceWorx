@@ -1,23 +1,31 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
-"""Part numbers in the BruceWorx form ``{PROG}-{NNNNN}-{REV}``.
+"""Part numbers in the BruceWorx form ``{PROG}-{DT}-{PPPPP}-{SSS}-{REV}``.
 
-Example: ``LE-01001-A``.
+Example: ``LE-01-01001-001-A``.
 
-The sequence is always five digits. ``PROG`` is 1 to 8 characters, starting
-with a letter. ``REV`` is 1 to 3 letters. Callers pass a :class:`NumberSource`
-(JSON today, BruceWorx Ops API later) and do not care where the next number
-came from.
+``PPPPP`` is the next parent drawing for a program and document type.
+``SSS`` is the next sub-assembly under that parent. Callers pass a
+:class:`NumberSource` (JSON today, BruceWorx Ops API later).
 """
 
 from __future__ import annotations
 
 import re
 
-PART_NUMBER_FORMAT = "{PROG}-{NNNNN}-{REV}"
-NUMBER_WIDTH = 5
+PART_NUMBER_FORMAT = "{PROG}-{DT}-{PPPPP}-{SSS}-{REV}"
+PARENT_WIDTH = 5
+SUB_WIDTH = 3
+DEFAULT_NEXT_PARENT = 1001
+DEFAULT_NEXT_SUB = 1
 _PROGRAM_RE = re.compile(r"[A-Z][A-Z0-9]{0,7}\Z")
 _REVISION_RE = re.compile(r"[A-Z]{1,3}\Z")
-PART_NUMBER_RE = re.compile(r"[A-Z][A-Z0-9]{0,7}-\d{5}-[A-Z]{1,3}\Z")
+PART_NUMBER_RE = re.compile(
+    r"(?P<program>[A-Z][A-Z0-9]{0,7})-"
+    r"(?P<document_type>\d{2})-"
+    r"(?P<parent>\d{5})-"
+    r"(?P<sub>\d{3})-"
+    r"(?P<revision>[A-Z]{1,3})\Z"
+)
 
 
 def normalize_program(program: str) -> str:
@@ -38,18 +46,73 @@ def normalize_revision(revision: str) -> str:
     return text
 
 
-def format_part_number(program: str, number: int, revision: str) -> str:
-    """Format one part number. ``number`` is the sequence before padding."""
+def normalize_document_type(document_type: str) -> str:
+    """Return a two-digit document type, or raise ValueError."""
+    text = str(document_type).strip()
+    if not text.isdigit() or len(text) > 2:
+        raise ValueError(
+            f"document type {document_type!r} must be a 2-digit code such as 01"
+        )
+    number = int(text)
+    if number < 0 or number > 99:
+        raise ValueError(f"document type {document_type!r} is outside 00..99")
+    return f"{number:02d}"
+
+
+def normalize_parent(parent) -> str:
+    """Return a five-digit parent drawing number."""
+    number = _bounded_int(parent, 99999, "parent drawing number")
+    return f"{number:0{PARENT_WIDTH}d}"
+
+
+def normalize_sub(sub) -> str:
+    """Return a three-digit sub-assembly number."""
+    number = _bounded_int(sub, 999, "sub-assembly number")
+    return f"{number:0{SUB_WIDTH}d}"
+
+
+def format_part_number(
+    program: str,
+    document_type: str,
+    parent,
+    sub,
+    revision: str,
+) -> str:
+    """Format one part number. ``parent`` and ``sub`` are unpadded integers or digits."""
     program = normalize_program(program)
+    document_type = normalize_document_type(document_type)
+    parent = normalize_parent(parent)
+    sub = normalize_sub(sub)
     revision = normalize_revision(revision)
-    if isinstance(number, bool) or not isinstance(number, int):
-        raise ValueError(f"sequence number must be an integer, got {number!r}")
-    if number < 0 or number > 99999:
-        raise ValueError(f"sequence number {number} is outside 0..99999")
-    formatted = f"{program}-{number:0{NUMBER_WIDTH}d}-{revision}"
+    formatted = f"{program}-{document_type}-{parent}-{sub}-{revision}"
     if not PART_NUMBER_RE.fullmatch(formatted):
         raise ValueError(f"refusing to emit invalid part number {formatted!r}")
     return formatted
+
+
+def parse_part_number(text: str) -> dict:
+    """Split a part number into its fields. Values stay zero-padded."""
+    match = PART_NUMBER_RE.fullmatch(str(text).strip().upper())
+    if not match:
+        raise ValueError(
+            f"part number {text!r} is not {PART_NUMBER_FORMAT} (example LE-01-01001-001-A)"
+        )
+    return match.groupdict()
+
+
+def _bounded_int(value, upper: int, label: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be an integer, got {value!r}")
+    if isinstance(value, int):
+        number = value
+    else:
+        text = str(value).strip()
+        if not text.isdigit():
+            raise ValueError(f"{label} must be an integer, got {value!r}")
+        number = int(text)
+    if number < 0 or number > upper:
+        raise ValueError(f"{label} {value!r} is outside 0..{upper}")
+    return number
 
 
 def part_objects(doc, names: list[str] | None = None) -> list:
@@ -73,31 +136,36 @@ def part_objects(doc, names: list[str] | None = None) -> list:
     return [obj for obj in candidates if obj.Name not in child_names]
 
 
-def assign_part_numbers(doc, source, program: str, objects=None, revision: str | None = None):
+def assign_part_numbers(
+    doc,
+    source,
+    program: str,
+    document_type: str,
+    objects=None,
+    revision: str | None = None,
+    parent: str | None = None,
+):
     """Set object Labels and the document Label from ``source``.
 
-    ``objects`` None selects :func:`part_objects`. An empty selection still
-    numbers the document Label, using a single allocated number.
+    ``objects`` None selects :func:`part_objects`. With no ``parent``, the
+    first number takes a new parent drawing and sub 001; further objects are
+    the next subs under that parent. An explicit ``parent`` numbers every
+    object as the next sub of that drawing. An empty selection still numbers
+    the document Label with one allocation.
 
     Returns a dict suitable for JSON. Does not save the document.
     """
     targets = part_objects(doc) if objects is None else list(objects)
+    count = len(targets) if targets else 1
+    numbers = _allocate_group(
+        source, program, document_type, count, revision=revision, parent=parent
+    )
     if not targets:
-        number = source.allocate(program, revision)
-        doc.Label = number
-        return {
-            "document_name": doc.Name,
-            "document_label": doc.Label,
-            "assignments": [],
-            "part_number": number,
-        }
+        doc.Label = numbers[0]
+        return _assignment_payload(doc, numbers[0], [])
 
     assignments = []
-    first = None
-    for obj in targets:
-        number = source.allocate(program, revision)
-        if first is None:
-            first = number
+    for obj, number in zip(targets, numbers):
         old_label = getattr(obj, "Label", "")
         obj.Label = number
         assignments.append(
@@ -107,12 +175,39 @@ def assign_part_numbers(doc, source, program: str, objects=None, revision: str |
                 "part_number": number,
             }
         )
-    doc.Label = first
+    doc.Label = numbers[0]
+    return _assignment_payload(doc, numbers[0], assignments)
+
+
+def _allocate_group(source, program, document_type, count, revision, parent):
+    numbers = []
+    active_parent = parent
+    for _ in range(count):
+        if active_parent is None:
+            number = source.allocate(program, document_type, revision=revision)
+            active_parent = parse_part_number(number)["parent"]
+        else:
+            number = source.allocate(
+                program,
+                document_type,
+                revision=revision,
+                parent=active_parent,
+            )
+        numbers.append(number)
+    return numbers
+
+
+def _assignment_payload(doc, part_number: str, assignments: list) -> dict:
+    parsed = parse_part_number(part_number)
     return {
         "document_name": doc.Name,
         "document_label": doc.Label,
         "assignments": assignments,
-        "part_number": first,
+        "part_number": part_number,
+        "program": parsed["program"],
+        "document_type": parsed["document_type"],
+        "parent": parsed["parent"],
+        "sub": parsed["sub"],
     }
 
 

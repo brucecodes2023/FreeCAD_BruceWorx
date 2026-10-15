@@ -12,8 +12,10 @@ from bruceworx.sources import open_number_source
 
 def run(
     program: str | None = None,
+    document_type: str | None = None,
     config: str | None = None,
     revision: str | None = None,
+    parent: str | None = None,
     doc=None,
     objects=None,
 ):
@@ -21,7 +23,10 @@ def run(
 
     Object choice, in order: explicit ``objects``, the GUI selection, then
     solid roots from :func:`part_objects`. Program choice: argument,
-    ``BW_PROGRAM``, then the only program in the numbering file.
+    ``BW_PROGRAM``, then the only program in the numbering file. Document
+    type: argument, ``BW_DOCUMENT_TYPE`` or ``BW_DT``, then the only type in
+    the table. ``BW_PARENT`` continues a parent drawing instead of taking a
+    new ``PPPPP``.
     """
     if doc is None:
         doc = active_document()
@@ -32,12 +37,33 @@ def run(
     source = open_number_source(resolve_config_path(config, write=True))
     if not program:
         program = os.environ.get("BW_PROGRAM") or sole_program(source)
+    if not document_type:
+        document_type = (
+            os.environ.get("BW_DOCUMENT_TYPE")
+            or os.environ.get("BW_DT")
+            or sole_document_type(source)
+        )
+    if not parent:
+        parent = os.environ.get("BW_PARENT") or None
     return assign_part_numbers(
         doc,
         source,
         program,
+        document_type,
         objects=objects,
         revision=revision,
+        parent=parent,
+    )
+
+
+def sole_document_type(source) -> str:
+    codes = list(source.document_types())
+    if len(codes) == 1:
+        return codes[0]
+    if not codes:
+        raise ValueError("set BW_DOCUMENT_TYPE; this source lists no document types")
+    raise ValueError(
+        "set BW_DOCUMENT_TYPE to a 2-digit code; the table has " + ", ".join(codes)
     )
 
 

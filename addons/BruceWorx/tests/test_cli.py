@@ -19,20 +19,32 @@ from bruceworx.cli import (  # noqa: E402
     split_entrypoint_argv,
 )
 from bruceworx.macro import run as run_macro  # noqa: E402
-from bruceworx.macro import sole_program  # noqa: E402
+from bruceworx.macro import sole_document_type, sole_program  # noqa: E402
 from bruceworx.sources import JsonNumberSource  # noqa: E402
 from fakes import FakeDoc, FakeObj, FakeShape  # noqa: E402
 
+EXAMPLE = "LE-01-01001-001-A"
 
-def _config(directory, next_number=1001):
+
+def _config(directory, next_parent=1001):
     path = os.path.join(directory, "numbering.json")
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(
             {
                 "source": "json",
-                "format": "{PROG}-{NNNNN}-{REV}",
-                "number_width": 5,
-                "programs": {"LE": {"revision": "A", "next": next_number}},
+                "format": "{PROG}-{DT}-{PPPPP}-{SSS}-{REV}",
+                "document_types": {
+                    "01": {"placeholder": True, "name": "PLACEHOLDER"},
+                    "02": {"placeholder": True, "name": "PLACEHOLDER"},
+                },
+                "programs": {
+                    "LE": {
+                        "revision": "A",
+                        "counters": {
+                            "01": {"next_parent": next_parent, "parents": {}},
+                        },
+                    }
+                },
             },
             handle,
         )
@@ -81,19 +93,46 @@ class NumberCommandTests(unittest.TestCase):
             path = _config(directory)
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
-                code = main(["next", "--program", "LE", "--config", path])
+                code = main(
+                    ["next", "--program", "LE", "--document-type", "01", "--config", path]
+                )
             self.assertEqual(code, 0)
-            self.assertEqual(_result(buf.getvalue())["part_number"], "LE-01001-A")
+            issued = _result(buf.getvalue())
+            self.assertEqual(issued["part_number"], EXAMPLE)
+            self.assertEqual(issued["document_type"], "01")
+            self.assertEqual(issued["parent"], "01001")
+            self.assertEqual(issued["sub"], "001")
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
-                code = main(["preview", "--program", "LE", "--config", path])
+                code = main(
+                    ["preview", "--program", "LE", "--document-type", "01", "--config", path]
+                )
             self.assertEqual(code, 0)
-            self.assertEqual(_result(buf.getvalue())["part_number"], "LE-01002-A")
+            self.assertEqual(_result(buf.getvalue())["part_number"], "LE-01-01002-001-A")
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                code = main(
+                    [
+                        "preview",
+                        "--program",
+                        "LE",
+                        "--dt",
+                        "01",
+                        "--parent",
+                        "01001",
+                        "--config",
+                        path,
+                    ]
+                )
+            self.assertEqual(code, 0)
+            self.assertEqual(_result(buf.getvalue())["part_number"], "LE-01-01001-002-A")
 
     def test_env_args_when_argv_omitted(self):
         with tempfile.TemporaryDirectory() as directory:
             path = _config(directory)
-            os.environ["BW_HOOKS_ARGS"] = f"preview --program LE --config {path}"
+            os.environ["BW_HOOKS_ARGS"] = (
+                f'preview --program LE --document-type 01 --config "{path}"'
+            )
             try:
                 buf = io.StringIO()
                 with contextlib.redirect_stdout(buf):
@@ -101,9 +140,12 @@ class NumberCommandTests(unittest.TestCase):
             finally:
                 del os.environ["BW_HOOKS_ARGS"]
             self.assertEqual(code, 0)
-            self.assertEqual(_result(buf.getvalue())["part_number"], "LE-01001-A")
+            self.assertEqual(_result(buf.getvalue())["part_number"], EXAMPLE)
             with open(path, encoding="utf-8") as handle:
-                self.assertEqual(json.load(handle)["programs"]["LE"]["next"], 1001)
+                saved = json.load(handle)
+            bucket = saved["programs"]["LE"]["counters"]["01"]
+            self.assertEqual(bucket["next_parent"], 1001)
+            self.assertEqual(bucket["parents"], {})
 
     def test_usage_error(self):
         buf = io.StringIO()
@@ -119,6 +161,12 @@ class NumberCommandTests(unittest.TestCase):
         self.assertIn("export-step", buf.getvalue())
         self.assertIn("list-tree", buf.getvalue())
         self.assertIn("rename", buf.getvalue())
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = main(["next", "--help"])
+        self.assertEqual(code, 0)
+        self.assertIn("--document-type", buf.getvalue())
+        self.assertIn("--parent", buf.getvalue())
 
     def test_missing_freecad(self):
         real = freecad_io.freecad_available
@@ -209,6 +257,8 @@ class WiredCommandTests(unittest.TestCase):
                             fcstd,
                             "--program",
                             "LE",
+                            "--document-type",
+                            "01",
                             "--config",
                             config,
                             "--output",
@@ -217,9 +267,11 @@ class WiredCommandTests(unittest.TestCase):
                     )
                 self.assertEqual(code, 0)
                 payload = _result(buf.getvalue())
-                self.assertEqual(payload["document_label"], "LE-01001-A")
+                self.assertEqual(payload["document_label"], EXAMPLE)
                 self.assertEqual(payload["document_name"], "Unnamed")
-                self.assertEqual(box.Label, "LE-01001-A")
+                self.assertEqual(payload["parent"], "01001")
+                self.assertEqual(payload["sub"], "001")
+                self.assertEqual(box.Label, EXAMPLE)
                 self.assertEqual(os.path.abspath(doc.saved), os.path.abspath(renamed))
                 self.assertEqual(os.path.abspath(opened["path"]), os.path.abspath(fcstd))
         finally:
@@ -236,20 +288,28 @@ class MacroTests(unittest.TestCase):
         doc = FakeDoc("Unnamed", "Unnamed", [box])
         with tempfile.TemporaryDirectory() as directory:
             path = _config(directory)
-            result = run_macro(program="LE", config=path, doc=doc)
-        self.assertEqual(result["document_label"], "LE-01001-A")
-        self.assertEqual(box.Label, "LE-01001-A")
+            result = run_macro(program="LE", document_type="01", config=path, doc=doc)
+        self.assertEqual(result["document_label"], EXAMPLE)
+        self.assertEqual(box.Label, EXAMPLE)
 
     def test_sole_program(self):
         with tempfile.TemporaryDirectory() as directory:
             source = JsonNumberSource(_config(directory))
             self.assertEqual(sole_program(source), "LE")
 
+    def test_two_document_types_need_an_explicit_code(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = JsonNumberSource(_config(directory))
+            with self.assertRaises(ValueError) as caught:
+                sole_document_type(source)
+        self.assertIn("01", str(caught.exception))
+        self.assertIn("02", str(caught.exception))
+
 
 class RenamePathTests(unittest.TestCase):
     def test_default_file_is_the_part_number(self):
-        path = _default_rename_output("/tmp/jobs/box.FCStd", "LE-01001-A")
-        self.assertEqual(path, os.path.join("/tmp/jobs", "LE-01001-A.FCStd"))
+        path = _default_rename_output("/tmp/jobs/box.FCStd", EXAMPLE)
+        self.assertEqual(path, os.path.join("/tmp/jobs", EXAMPLE + ".FCStd"))
 
 
 class EmitTests(unittest.TestCase):
@@ -258,10 +318,10 @@ class EmitTests(unittest.TestCase):
             path = os.path.join(directory, "out.json")
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
-                emit({"ok": True, "part_number": "LE-01001-A"}, path)
+                emit({"ok": True, "part_number": EXAMPLE}, path)
             with open(path, encoding="utf-8") as handle:
                 saved = json.load(handle)
-            self.assertEqual(saved["part_number"], "LE-01001-A")
+            self.assertEqual(saved["part_number"], EXAMPLE)
             self.assertEqual(_result(buf.getvalue())["ok"], True)
 
 

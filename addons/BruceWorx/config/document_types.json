@@ -1,0 +1,14 @@
+{
+  "note": "PLACEHOLDER document-type table. Bruce replaces these codes. They are not real BruceWorx document types.",
+  "placeholder": true,
+  "types": {
+    "01": {
+      "placeholder": true,
+      "name": "PLACEHOLDER"
+    },
+    "02": {
+      "placeholder": true,
+      "name": "PLACEHOLDER"
+    }
+  }
+}

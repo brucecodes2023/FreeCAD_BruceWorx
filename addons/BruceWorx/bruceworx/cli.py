@@ -23,7 +23,7 @@ import traceback
 
 from bruceworx import freecad_io
 from bruceworx.config_path import resolve_config_path
-from bruceworx.numbering import assign_part_numbers
+from bruceworx.numbering import assign_part_numbers, parse_part_number
 from bruceworx.sources import open_number_source
 from bruceworx.step_export import export_step
 from bruceworx.tree import document_tree
@@ -62,8 +62,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     rename.add_argument("--input", required=True, help="Source .FCStd document")
     rename.add_argument("--program", required=True, help="Program code, for example LE")
+    rename.add_argument(
+        "--document-type",
+        "--dt",
+        required=True,
+        help="2-digit document type, for example 01",
+    )
     rename.add_argument("--config", default="", help="Numbering JSON (default: local config)")
     rename.add_argument("--revision", default="", help="Override the program's revision")
+    rename.add_argument(
+        "--parent",
+        default="",
+        help="Number under this parent drawing instead of taking a new one",
+    )
     rename.add_argument(
         "--objects",
         default="",
@@ -77,13 +88,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     nxt = sub.add_parser("next", help="Allocate the next part number (no FreeCAD)")
     nxt.add_argument("--program", required=True)
+    nxt.add_argument("--document-type", "--dt", required=True)
     nxt.add_argument("--config", default="")
     nxt.add_argument("--revision", default="")
+    nxt.add_argument("--parent", default="", help="Existing parent drawing (PPPPP)")
 
     preview = sub.add_parser("preview", help="Show the next part number without allocating")
     preview.add_argument("--program", required=True)
+    preview.add_argument("--document-type", "--dt", required=True)
     preview.add_argument("--config", default="")
     preview.add_argument("--revision", default="")
+    preview.add_argument("--parent", default="", help="Existing parent drawing (PPPPP)")
     return parser
 
 
@@ -234,8 +249,10 @@ def _rename(args) -> int:
             doc,
             source,
             args.program,
+            args.document_type,
             objects=targets,
             revision=args.revision or None,
+            parent=args.parent or None,
         )
         output = args.output or _default_rename_output(args.input, assigned["document_label"])
         saved = freecad_io.save_document(doc, output)
@@ -252,17 +269,22 @@ def _number_command(args, *, allocate: bool) -> int:
     path = resolve_config_path(args.config or None, write=allocate)
     source = open_number_source(path)
     revision = args.revision or None
+    parent = args.parent or None
     if allocate:
-        number = source.allocate(args.program, revision)
+        number = source.allocate(args.program, args.document_type, revision, parent)
         command = "next"
     else:
-        number = source.preview(args.program, revision)
+        number = source.preview(args.program, args.document_type, revision, parent)
         command = "preview"
+    parsed = parse_part_number(number)
     emit(
         {
             "ok": True,
             "command": command,
-            "program": args.program,
+            "program": parsed["program"],
+            "document_type": parsed["document_type"],
+            "parent": parsed["parent"],
+            "sub": parsed["sub"],
             "part_number": number,
             "config": path,
         }
