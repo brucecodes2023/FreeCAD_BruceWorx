@@ -1,0 +1,31 @@
+/* [BW] FCB-P1F-07. Applied only while Preferences/BruceWorx/FloatingModelTree is on.
+   Semi-transparent left overlay (the model tree). Other overlay sides stay readable
+   if they share this sheet for that time. Literal colors: this file replaces the
+   overlay sheet, so theme @variables are not assumed. */
+
+Gui--OverlayTabWidget#OverlayLeft {
+  background-color: rgba(32, 34, 38, 170);
+  border: 1px solid rgba(255, 255, 255, 40);
+  border-radius: 6px;
+}
+
+Gui--OverlayTabWidget#OverlayLeft QTreeView,
+Gui--OverlayTabWidget#OverlayLeft Gui--TreePanel,
+Gui--OverlayTabWidget#OverlayLeft Gui--PropertyEditor--PropertyEditor {
+  background-color: rgba(32, 34, 38, 150);
+  alternate-background-color: rgba(255, 255, 255, 12);
+  color: rgba(240, 240, 240, 230);
+  border: none;
+}
+
+Gui--OverlayTabWidget#OverlayLeft QHeaderView,
+Gui--OverlayTabWidget#OverlayLeft QLineEdit {
+  background-color: rgba(32, 34, 38, 190);
+  color: rgba(240, 240, 240, 230);
+  border: none;
+}
+
+Gui--OverlayTabWidget#OverlayLeft QTreeView::item:selected {
+  background-color: rgba(80, 140, 220, 160);
+  color: rgba(255, 255, 255, 240);
+}

@@ -143,3 +143,6 @@ endif(BUILD_TUX)
 if(BUILD_WEB)
     add_subdirectory(Web)
 endif(BUILD_WEB)
+
+# [BW] Preference page and overlay model-tree config. Python only.
+add_subdirectory(BruceWorx)

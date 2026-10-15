@@ -327,6 +327,8 @@ private:
 
     void populateToolBarMenu(QMenu*);
     void populateDockWindowMenu(QMenu*);
+    /// [BW] FCB-P1F-02. No-op unless MainWindow/UnifiedTitleAndToolBar is true.
+    void applyMacUnifiedTitleBar();
 
     static void renderDevBuildWarning(
         QPainter& painter,
