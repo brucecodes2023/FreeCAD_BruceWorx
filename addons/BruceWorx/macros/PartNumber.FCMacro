@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# BruceWorx part-number macro (FCB-P2-04/05).
+#
+# Sets each chosen object's Label, and the document Label, to the next
+# {PROG}-{NNNNN}-{REV} number (example: LE-01001-A).
+#
+# Program: BW_PROGRAM, or the only program in the numbering file.
+# Config:  BW_NUMBERING_CONFIG, or config/numbering.json (created from the
+#          example on first allocate).
+# Objects: the GUI selection, or solid roots (a Body, not its Pad).
+#
+# FreeCAD cannot rename a document's internal Name after creation. The
+# visible document name (Document.Label) receives the first part number.
+#
+# Headless equivalent:
+#   FreeCADCmd -- addons/BruceWorx/hooks.py rename --input part.FCStd --program LE
+
+import os
+import sys
+
+_addon = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _addon not in sys.path:
+    sys.path.insert(0, _addon)
+
+from bruceworx.macro import run  # noqa: E402
+
+_result = run(
+    program=os.environ.get("BW_PROGRAM") or None,
+    config=os.environ.get("BW_NUMBERING_CONFIG") or None,
+    revision=os.environ.get("BW_REVISION") or None,
+)
+print("BW_RESULT " + __import__("json").dumps(_result, sort_keys=True))

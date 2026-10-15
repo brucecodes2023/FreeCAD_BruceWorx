@@ -1,0 +1,12 @@
+{
+  "source": "json",
+  "format": "{PROG}-{NNNNN}-{REV}",
+  "number_width": 5,
+  "programs": {
+    "LE": {
+      "description": "Example program. Copy this file to numbering.json for a local counter.",
+      "revision": "A",
+      "next": 1001
+    }
+  }
+}

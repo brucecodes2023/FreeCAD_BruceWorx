@@ -112,8 +112,13 @@ Jobs that run on pull requests and on pushes to `main`:
 * **Linux x86_64** (GitHub-hosted `ubuntu-latest`): `pixi install` from
   `pixi.lock`, `configure-release`, `build-release` with ccache (cache key
   `bw-pixi-linux-x86_64`), the upstream C++ and Python CLI tests, the `bw.1`
-  version check, and a STEP import of `data/tests/Step/as1-ac-214.stp` through
-  `package/bruceworx/step-import-check.py`.
+  version check, a STEP import of `data/tests/Step/as1-ac-214.stp` through
+  `package/bruceworx/step-import-check.py`, and
+  `addons/BruceWorx/tests/run_freecad_smoke.sh` (STEP export, re-import,
+  document tree, part-number rename, `hooks.py`).
+* **BruceWorx hooks unit tests** (GitHub-hosted `ubuntu-latest`): `python3 -m
+  unittest discover -s addons/BruceWorx/tests`. No compile. CLI usage is in
+  `addons/BruceWorx/README.md`.
 * **pixi lock** on `ubuntu-latest` and GitHub-hosted `macos-15` (Apple
   Silicon): `pixi lock --check` on both, and `pixi install --locked` on
   macOS so the `osx-arm64` environment from `pixi.lock` is installed without
@@ -136,7 +141,8 @@ read `BW_MAC_RUNNER` and does not use the self-hosted runner:
 The self-hosted jobs `macos-arm64` and `macos-arm64-dmg` are still in the
 workflow, behind `vars.BW_MAC_RUNNER == 'true'`, on the labels
 `self-hosted, macOS, ARM64`. They upload `FreeCAD-BruceWorx-macOS-arm64-dmg`
-when that variable is true. It stays false.
+when that variable is true. It stays false. They do not run the hooks smoke
+script.
 
 ## 7. macOS arm64 .dmg (internal use only)
 
