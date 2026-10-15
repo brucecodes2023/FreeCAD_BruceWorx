@@ -2,9 +2,14 @@
 # BruceWorx fork CI.
 # Adapted from upstream .github/workflows/sub_buildPixi.yml: same pixi tasks, same
 # ccache settings, and the same upstream test actions (runCPPTests / runPythonTests).
-#   * linux-x86_64 : GitHub-hosted ubuntu-latest
-#   * macos-arm64  : self-hosted Apple Silicon runner. Runs only when the repository
-#                    variable BW_MAC_RUNNER == 'true'; skipped otherwise.
+#   * pixi-lock      : GitHub-hosted ubuntu-latest and macos-15 (arm64). Lock check,
+#                      plus a locked install on macOS. Runs on pull requests.
+#   * linux-x86_64   : GitHub-hosted ubuntu-latest. Full pixi build, tests, STEP check.
+#   * macos-arm64-hosted-dmg : GitHub-hosted macos-15, workflow_dispatch only.
+#                      Full build + STEP. Unsigned .dmg upload only if upload_dmg.
+#   * macos-arm64 / macos-arm64-dmg : self-hosted Apple Silicon. Runs only when the
+#                      repository variable BW_MAC_RUNNER == 'true'. Leave it false
+#                      (parked). These jobs must not be pointed at GitHub-hosted labels.
 
 name: BruceWorx CI
 
@@ -13,7 +18,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch: ~
+  workflow_dispatch:
+    inputs:
+      upload_dmg:
+        description: "Also build the unsigned macOS arm64 .dmg, STEP-check the packaged app, and upload it (~1.7 GB). Leave off unless you need the file."
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -130,6 +140,17 @@ jobs:
           echo "BW version check: FAIL - -bw.1 found in neither FreeCAD.Version() nor $hdr"
           [ -f "$hdr" ] && grep -F 'FCVersion' "$hdr"
           exit 1
+
+      # Same STEP file the hosted macOS job imports (data/tests/Step/as1-ac-214.stp).
+      - name: BruceWorx STEP import check
+        shell: bash
+        run: |
+          set -o pipefail
+          stepfile="${{ github.workspace }}/data/tests/Step/as1-ac-214.stp"
+          test -f "$stepfile"
+          pixi run FreeCADCmd "${{ github.workspace }}/package/bruceworx/step-import-check.py" --pass "$stepfile" 2>&1 | tee "${logdir}StepImport.log"
+          grep -q "BW STEP check: PASS" "${logdir}StepImport.log"
+          grep "BW STEP check:" "${logdir}StepImport.log" >> "$GITHUB_STEP_SUMMARY"
 
       # Same as upstream sub_buildPixi.yml: Python CLI tests on the installed build.
       # (Upstream's GUI-on-install test is disabled there for Qt6; we follow suit.)
@@ -255,27 +276,16 @@ jobs:
           [ -f "$hdr" ] && grep -F 'FCVersion' "$hdr"
           exit 1
 
-      # BruceWorx STEP-open check: import an upstream STEP test file with the installed
-      # FreeCADCmd and print how many shapes/solids came in. Fails if nothing imported.
+      # Same script as the Linux job. This job stays skipped while BW_MAC_RUNNER is false.
       - name: BruceWorx STEP import check
         shell: bash
         run: |
+          set -o pipefail
           stepfile="${{ github.workspace }}/data/tests/Step/as1-ac-214.stp"
-          cat > "$RUNNER_TEMP/bw_step_check.py" <<'PY'
-          import sys, FreeCAD, Import
-          path = sys.argv[-1]
-          doc = FreeCAD.newDocument("bwstep")
-          Import.insert(path, doc.Name)
-          shapes = [o for o in doc.Objects if hasattr(o, "Shape") and not o.Shape.isNull()]
-          solids = sum(len(o.Shape.Solids) for o in shapes)
-          print("BW STEP check: file=%s objects=%d shapes=%d solids=%d" % (path, len(doc.Objects), len(shapes), solids))
-          if not shapes:
-              print("BW STEP check: FAIL - no shapes imported")
-              sys.exit(1)
-          print("BW STEP check: PASS")
-          PY
-          pixi run FreeCADCmd "$RUNNER_TEMP/bw_step_check.py" --pass "$stepfile" 2>&1 | tee "${logdir}StepImport.log"
+          test -f "$stepfile"
+          pixi run FreeCADCmd "${{ github.workspace }}/package/bruceworx/step-import-check.py" --pass "$stepfile" 2>&1 | tee "${logdir}StepImport.log"
           grep -q "BW STEP check: PASS" "${logdir}StepImport.log"
+          grep "BW STEP check:" "${logdir}StepImport.log" >> "$GITHUB_STEP_SUMMARY"
 
       # Same as upstream sub_buildPixi.yml: Python CLI tests on the installed build.
       # (Upstream's GUI-on-install test is disabled there for Qt6; we follow suit.)
@@ -350,10 +360,12 @@ jobs:
           path: dist/*.dmg
           if-no-files-found: error
 
-  # Manual-only: GitHub-hosted Apple Silicon build -> unsigned .dmg -> STEP import
-  # check against the packaged app's FreeCADCmd. Independent of BW_MAC_RUNNER.
+  # Manual-only full build on GitHub-hosted Apple Silicon (macos-15 is arm64).
+  # Independent of BW_MAC_RUNNER. Does not use the self-hosted runner.
+  # upload_dmg adds make-dmg.sh, a second STEP check on the packaged FreeCADCmd,
+  # and the ~1.7 GB artifact. Default dispatch skips that upload.
   macos-arm64-hosted-dmg:
-    name: macOS arm64 hosted .dmg + STEP check (manual)
+    name: macOS arm64 hosted build + STEP (manual)
     if: github.event_name == 'workflow_dispatch'
     runs-on: macos-15
     timeout-minutes: 350
@@ -416,10 +428,22 @@ jobs:
       - name: CMake install
         run: pixi run install-${{ env.config }}
 
+      - name: BruceWorx STEP import check (installed FreeCADCmd)
+        shell: bash
+        run: |
+          set -o pipefail
+          stepfile="${{ github.workspace }}/data/tests/Step/as1-ac-214.stp"
+          test -f "$stepfile"
+          pixi run FreeCADCmd "${{ github.workspace }}/package/bruceworx/step-import-check.py" --pass "$stepfile" 2>&1 | tee "${logdir}StepImport.log"
+          grep -q "BW STEP check: PASS" "${logdir}StepImport.log"
+          grep "BW STEP check:" "${logdir}StepImport.log" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Make unsigned .dmg
+        if: inputs.upload_dmg
         run: pixi run bash package/bruceworx/make-dmg.sh "" dist
 
       - name: BruceWorx STEP import check (packaged app FreeCADCmd)
+        if: inputs.upload_dmg
         shell: bash
         run: |
           set -o pipefail
@@ -429,26 +453,17 @@ jobs:
           hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$dmg"
           cmd="$mnt/FreeCAD BruceWorx.app/Contents/Resources/bin/FreeCADCmd"
           stepfile="${{ github.workspace }}/data/tests/Step/as1-ac-214.stp"
-          cat > "$RUNNER_TEMP/bw_step_check.py" <<'PY'
-          import sys, FreeCAD, Import
-          path = sys.argv[-1]
-          doc = FreeCAD.newDocument("bwstep")
-          Import.insert(path, doc.Name)
-          shapes = [o for o in doc.Objects if hasattr(o, "Shape") and not o.Shape.isNull()]
-          solids = sum(len(o.Shape.Solids) for o in shapes)
-          print("BW STEP check: file=%s objects=%d shapes=%d solids=%d" % (path, len(doc.Objects), len(shapes), solids))
-          if not shapes:
-              print("BW STEP check: FAIL - no shapes imported")
-              sys.exit(1)
-          print("BW STEP check: PASS")
-          PY
-          rc=0
-          "$cmd" "$RUNNER_TEMP/bw_step_check.py" --pass "$stepfile" 2>&1 | tee "${logdir}StepImportApp.log" || rc=$?
+          set +e
+          "$cmd" "${{ github.workspace }}/package/bruceworx/step-import-check.py" --pass "$stepfile" 2>&1 | tee "${logdir}StepImportApp.log"
+          rc=$?
+          set -e
           hdiutil detach "$mnt" || true
-          grep -q "BW STEP check: PASS" "${logdir}StepImportApp.log" || exit 1
+          grep -q "BW STEP check: PASS" "${logdir}StepImportApp.log"
           grep "BW STEP check:" "${logdir}StepImportApp.log" >> "$GITHUB_STEP_SUMMARY"
+          exit "$rc"
 
       - name: Upload unsigned .dmg
+        if: inputs.upload_dmg
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: ${{ env.BW_ARTIFACT }}
@@ -462,3 +477,43 @@ jobs:
         with:
           name: bw-macos-15-arm64-logs
           path: ${{ env.logdir }}
+
+  # Cheap check on every pull request: the lockfile still solves, and the
+  # osx-arm64 environment actually installs on GitHub-hosted Apple Silicon.
+  # The full macOS compile stays on workflow_dispatch (macos-arm64-hosted-dmg).
+  pixi-lock:
+    name: pixi lock (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-64
+            install: false
+          - os: macos-15
+            name: osx-arm64
+            install: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - uses: prefix-dev/setup-pixi@82d477f15f3a381dbcc8adc1206ce643fe110fb7 # v0.9.3
+        with:
+          pixi-version: v0.59.0
+          cache: false
+          run-install: false
+
+      - name: Check lockfile
+        run: pixi lock --check
+
+      - name: Install locked environment
+        if: matrix.install
+        run: pixi install --locked
+
+      - name: Show environment
+        if: matrix.install
+        run: |
+          pixi info
+          pixi run python -c "import platform,sys; print(platform.machine(), sys.version)"
