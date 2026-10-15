@@ -4,6 +4,8 @@
 # ccache settings, and the same upstream test actions (runCPPTests / runPythonTests).
 #   * pixi-lock      : GitHub-hosted ubuntu-latest and macos-15 (arm64). Lock check,
 #                      plus a locked install on macOS. Runs on pull requests.
+#   * bruceworx-pack : GitHub-hosted ubuntu-latest. Preference-pack unit tests
+#                      (no compile). Runs on pull requests.
 #   * linux-x86_64   : GitHub-hosted ubuntu-latest. Full pixi build, tests, STEP check.
 #   * macos-arm64-hosted-dmg : GitHub-hosted macos-15, workflow_dispatch only.
 #                      Full build + STEP. Unsigned .dmg upload only if upload_dmg.
@@ -517,3 +519,17 @@ jobs:
         run: |
           pixi info
           pixi run python -c "import platform,sys; print(platform.machine(), sys.version)"
+
+  # Preference-pack tests do not need a FreeCAD build. They check the cfg
+  # inventory, the enable/disable snapshot, the stylesheet tokens and that
+  # BW_MAC_RUNNER is still gated.
+  bruceworx-pack:
+    name: BruceWorx preference pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Preference pack tests
+        run: python3 src/Mod/BruceWorx/test_bruceworx_pack.py

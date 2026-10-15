@@ -143,3 +143,6 @@ endif(BUILD_TUX)
 if(BUILD_WEB)
     add_subdirectory(Web)
 endif(BUILD_WEB)
+
+# Python-only BruceWorx preference-pack helper (ground grid). No C++.
+add_subdirectory(BruceWorx)
