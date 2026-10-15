@@ -18,7 +18,8 @@ test -s "$outdir/LE-01001-A.FCStd"
 
 echo "BruceWorx smoke: hooks.py via BW_HOOKS_ARGS"
 BW_HOOKS_ARGS="list-tree --input ${outdir}/box.FCStd --output ${outdir}/cli-tree.json" \
-  "$cmd" "$root/hooks.py"
+  "$cmd" "$root/hooks.py" 2>&1 | tee "${outdir}/cli-list-tree.log"
+grep -q 'BW_RESULT' "${outdir}/cli-list-tree.log"
 python3 - "$outdir/cli-tree.json" <<'PY'
 import json
 import sys
@@ -30,8 +31,9 @@ print("cli list-tree ok", tree["tree"][0]["name"])
 PY
 
 echo "BruceWorx smoke: hooks.py via FreeCADCmd --"
+# FreeCADCmd mixes Python prints into its console stream. Keep both.
 preview=$("$cmd" -- "$root/hooks.py" preview --program LE \
-  --config "$root/config/numbering.example.json")
+  --config "$root/config/numbering.example.json" 2>&1)
 printf '%s\n' "$preview" | grep -q 'LE-01001-A'
 # Preview must not create or rewrite the local counter.
 test ! -e "$root/config/numbering.json"
