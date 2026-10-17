@@ -1,0 +1,17 @@
+{
+  "source": "json",
+  "format": "{PROG}-{DT}-{PPPPP}-{SSS}-{REV}",
+  "document_types_file": "document_types.json",
+  "programs": {
+    "LE": {
+      "description": "Example program. Copy this file to numbering.json for a local counter.",
+      "revision": "A",
+      "counters": {
+        "01": {
+          "next_parent": 1001,
+          "parents": {}
+        }
+      }
+    }
+  }
+}
