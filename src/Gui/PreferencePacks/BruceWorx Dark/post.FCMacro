@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+import os
+import sys
+
+
+def _warn(message):
+    try:
+        import FreeCAD
+
+        FreeCAD.Console.PrintWarning(message + "\n")
+    except Exception:
+        print(message)
+
+
+def _ensure_mod_path():
+    try:
+        import FreeCAD as App
+    except Exception:
+        return
+    home = App.getHomePath()
+    for candidate in (
+        os.path.join(home, "Mod", "BruceWorx"),
+        os.path.join(home, "share", "Mod", "BruceWorx"),
+    ):
+        if os.path.isdir(candidate) and candidate not in sys.path:
+            sys.path.insert(0, candidate)
+
+
+try:
+    _ensure_mod_path()
+    import ground_grid
+
+    ground_grid.activate()
+except Exception as exc:
+    _warn(f"BruceWorx Dark post.FCMacro: {exc}")

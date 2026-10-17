@@ -1,0 +1,393 @@
+/*
+BruceWorx
+============================================================================================================
+Apple-clean chrome for FreeCAD 1.1. Colors come from the theme parameter file
+selected by Preferences/MainWindow/Theme:
+
+    Gui/Stylesheets/parameters/BruceWorx.yaml        (light)
+    Gui/Stylesheets/parameters/BruceWorx Dark.yaml   (dark)
+
+One sheet, both themes. Spacing, type and corner radius live here; the yaml
+files only change color tokens, so light and dark stay in step.
+
+The sheet is applied by the BruceWorx preference pack. It does not replace
+FreeCAD's default until that pack is applied.
+============================================================================================================
+*/
+
+/* Type and color on the shells we actually paint. A global QWidget rule is
+   avoided: FreeCAD.qss notes that it slows startup. */
+QMainWindow,
+QDialog,
+QDockWidget,
+QMenu,
+QMenuBar,
+QToolBar,
+QStatusBar {
+  font-family: "Inter", "Segoe UI", "Helvetica Neue", "Noto Sans", sans-serif;
+  font-size: 13px;
+  color: @TextForegroundColor;
+}
+
+QMainWindow,
+QDialog {
+  background-color: @GeneralBackgroundColor;
+}
+
+/* Menus ------------------------------------------------------------------------------------------ */
+QMenuBar {
+  background-color: @GeneralBackgroundColor;
+  border-bottom: 1px solid @GeneralBorderColor;
+  padding: 2px 8px;
+  spacing: 4px;
+}
+
+QMenuBar::item {
+  background: transparent;
+  padding: 6px 12px;
+  border-radius: 6px;
+  margin: 2px 1px;
+}
+
+QMenuBar::item:selected {
+  background-color: @AccentHoverColor;
+}
+
+QMenuBar::item:pressed {
+  background-color: @AccentColor;
+  color: #ffffff;
+}
+
+QMenu {
+  background-color: @MenuBackgroundColor;
+  border: 1px solid @GeneralBorderColor;
+  border-radius: 10px;
+  padding: 6px;
+}
+
+QMenu::item {
+  padding: 6px 28px 6px 16px;
+  border-radius: 6px;
+  margin: 1px 2px;
+}
+
+QMenu::item:selected {
+  background-color: @AccentHoverColor;
+}
+
+QMenu::separator {
+  height: 1px;
+  background: @GeneralBorderColor;
+  margin: 6px 10px;
+}
+
+/* Toolbars --------------------------------------------------------------------------------------- */
+QToolBar {
+  background-color: @GeneralBackgroundColor;
+  border: none;
+  border-bottom: 1px solid @GeneralBorderColor;
+  spacing: 4px;
+  padding: 6px 8px;
+}
+
+QToolBar::separator {
+  background: @GeneralBorderColor;
+  width: 1px;
+  margin: 6px 8px;
+}
+
+QToolButton {
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: @ToolbarButtonsPadding;
+  margin: 1px;
+}
+
+QToolButton:hover {
+  background-color: @AccentHoverColor;
+  border-color: transparent;
+}
+
+QToolButton:pressed,
+QToolButton:checked {
+  background-color: @AccentColor;
+  border-color: transparent;
+  color: #ffffff;
+}
+
+QToolButton:disabled {
+  color: @TextDisabledColor;
+}
+
+/* Docks and tabs --------------------------------------------------------------------------------- */
+QDockWidget {
+  background-color: @GeneralAlternateBackgroundColor;
+  border: 1px solid @GeneralBorderColor;
+}
+
+QDockWidget::title {
+  background-color: @GeneralHeaderBackgroundColor;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid @GeneralBorderColor;
+}
+
+QTabWidget::pane {
+  background-color: @GeneralAlternateBackgroundColor;
+  border: 1px solid @GeneralBorderColor;
+  border-radius: 8px;
+  top: -1px;
+}
+
+QTabBar::tab {
+  background-color: @InActiveTabBackgroundColor;
+  color: @TextForegroundColor;
+  border: 1px solid transparent;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  padding: 7px 14px;
+  margin-right: 2px;
+  min-height: 18px;
+}
+
+QTabBar::tab:selected {
+  background-color: @ActiveTabBackgroundColor;
+  border-color: @GeneralBorderColor;
+  border-bottom-color: @ActiveTabBackgroundColor;
+}
+
+QTabBar::tab:hover:!selected {
+  background-color: @AccentHoverColor;
+}
+
+/* Trees, lists, property editor ------------------------------------------------------------------ */
+QTreeView,
+QListView,
+QTableView,
+QTreeWidget,
+QListWidget {
+  background-color: @GeneralAlternateBackgroundColor;
+  alternate-background-color: @GeneralBackgroundColor;
+  color: @TextForegroundColor;
+  border: none;
+  outline: none;
+  gridline-color: @GeneralGridLinesColor;
+}
+
+QTreeView::item,
+QListView::item,
+QTreeWidget::item,
+QListWidget::item {
+  padding: 4px 6px;
+  min-height: 20px;
+  border-radius: 4px;
+}
+
+QTreeView::item:hover,
+QListView::item:hover,
+QTreeWidget::item:hover,
+QListWidget::item:hover {
+  background-color: @AccentHoverColor;
+}
+
+QTreeView::item:selected,
+QListView::item:selected,
+QTreeWidget::item:selected,
+QListWidget::item:selected {
+  background-color: @TextSelectBackgroundColor;
+  color: @TextForegroundColor;
+}
+
+QHeaderView::section {
+  background-color: @GeneralHeaderBackgroundColor;
+  color: @TextForegroundColor;
+  border: none;
+  border-bottom: 1px solid @GeneralBorderColor;
+  border-right: 1px solid @GeneralBorderColor;
+  padding: 6px 8px;
+  font-weight: 600;
+}
+
+Gui--PropertyEditor--PropertyEditor {
+  background-color: @GeneralAlternateBackgroundColor;
+  color: @TextForegroundColor;
+}
+
+/* Buttons and fields ----------------------------------------------------------------------------- */
+QPushButton {
+  background-color: @ButtonTopBackgroundColor;
+  color: @TextForegroundColor;
+  border: 1px solid @GeneralBorderColor;
+  border-radius: 8px;
+  padding: 6px 14px;
+  min-height: 18px;
+}
+
+QPushButton:hover {
+  background-color: @AccentHoverColor;
+  border-color: @AccentColor;
+}
+
+QPushButton:pressed,
+QPushButton:default {
+  background-color: @AccentColor;
+  color: #ffffff;
+  border-color: @AccentColor;
+}
+
+QPushButton:disabled {
+  background-color: @GeneralDisabledBackgroundColor;
+  color: @TextDisabledColor;
+  border-color: @GeneralBorderColor;
+}
+
+QLineEdit,
+QComboBox,
+QSpinBox,
+QDoubleSpinBox,
+QTextEdit,
+QPlainTextEdit {
+  background-color: @TextEditFieldBackgroundColor;
+  color: @TextForegroundColor;
+  border: 1px solid @GeneralBorderColor;
+  border-radius: @InputFieldBorderRadius;
+  padding: 4px 8px;
+  min-height: 20px;
+  selection-background-color: @TextSelectBackgroundColor;
+  selection-color: @TextForegroundColor;
+}
+
+QLineEdit:focus,
+QComboBox:focus,
+QSpinBox:focus,
+QDoubleSpinBox:focus,
+QTextEdit:focus,
+QPlainTextEdit:focus {
+  border: 1px solid @AccentColor;
+}
+
+QComboBox::drop-down {
+  border: none;
+  width: 22px;
+}
+
+QComboBox QAbstractItemView {
+  background-color: @MenuBackgroundColor;
+  color: @TextForegroundColor;
+  border: 1px solid @GeneralBorderColor;
+  border-radius: 8px;
+  selection-background-color: @AccentHoverColor;
+  padding: 4px;
+}
+
+QCheckBox,
+QRadioButton {
+  spacing: 8px;
+  color: @TextForegroundColor;
+  background: transparent;
+}
+
+QCheckBox::indicator,
+QRadioButton::indicator {
+  width: 16px;
+  height: 16px;
+  border: 1px solid @CheckBoxBorderColor;
+  background-color: @CheckBoxBackgroundColor;
+}
+
+QCheckBox::indicator {
+  border-radius: 4px;
+}
+
+QRadioButton::indicator {
+  border-radius: 8px;
+}
+
+QCheckBox::indicator:checked,
+QRadioButton::indicator:checked {
+  background-color: @AccentColor;
+  border-color: @AccentColor;
+}
+
+QGroupBox {
+  background-color: @GroupboxBackgroundColor;
+  border: 1px solid @GroupboxBorderColor;
+  border-radius: 10px;
+  margin-top: 14px;
+  padding: 12px 10px 10px 10px;
+  font-weight: 600;
+}
+
+QGroupBox::title {
+  subcontrol-origin: margin;
+  left: 12px;
+  padding: 0 6px;
+  color: @TextForegroundColor;
+}
+
+/* Scrollbars ------------------------------------------------------------------------------------- */
+QScrollBar:vertical {
+  background: transparent;
+  width: 12px;
+  margin: 4px 2px;
+}
+
+QScrollBar:horizontal {
+  background: transparent;
+  height: 12px;
+  margin: 2px 4px;
+}
+
+QScrollBar::handle:vertical,
+QScrollBar::handle:horizontal {
+  background: @ScrollbarBackgroundColor;
+  border-radius: 5px;
+  min-height: 24px;
+  min-width: 24px;
+}
+
+QScrollBar::handle:hover {
+  background: @AccentColor;
+}
+
+QScrollBar::add-line,
+QScrollBar::sub-line,
+QScrollBar::add-page,
+QScrollBar::sub-page {
+  background: transparent;
+  border: none;
+  height: 0;
+  width: 0;
+}
+
+/* Status and tooltips ---------------------------------------------------------------------------- */
+QStatusBar {
+  background-color: @GeneralBackgroundColor;
+  border-top: 1px solid @GeneralBorderColor;
+  padding: 2px 8px;
+}
+
+QStatusBar QLabel {
+  background: transparent;
+  color: @TextForegroundColor;
+  padding: 0 6px;
+}
+
+QToolTip {
+  background-color: @MenuBackgroundColor;
+  color: @TextForegroundColor;
+  border: 1px solid @GeneralBorderColor;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+QLabel {
+  background: transparent;
+  color: @TextForegroundColor;
+}
+
+QLabel[link="true"],
+a {
+  color: @TextUrlColor;
+}
