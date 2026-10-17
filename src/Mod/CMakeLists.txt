@@ -144,5 +144,6 @@ if(BUILD_WEB)
     add_subdirectory(Web)
 endif(BUILD_WEB)
 
-# [BW] Preference page and overlay model-tree config. Python only.
+# [BW] Python only: preference page, overlay model-tree config,
+# preference-pack helper and ground grid. No C++.
 add_subdirectory(BruceWorx)

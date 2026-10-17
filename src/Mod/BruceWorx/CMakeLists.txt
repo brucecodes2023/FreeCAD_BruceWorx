@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
-# [BW] Python-only preference page. No workbench.
+# [BW] Python-only: preference page, overlay model tree, preference-pack
+# helper and ground grid. No workbench, no C++.
 
 SET(BruceWorx_SRCS
     Init.py
@@ -8,6 +9,8 @@ SET(BruceWorx_SRCS
     TestBruceWorx.py
     preferences-bruceworx.ui
     BruceWorxModelTree.qss
+    bruceworx_pack.py
+    ground_grid.py
 )
 
 ADD_CUSTOM_TARGET(BruceWorx ALL
