@@ -267,9 +267,32 @@ The shipped type table has more than one code, so the macro requires
 run with several objects shares a new parent (`001`, `002`, ...).
 `BW_PARENT` continues an existing drawing instead.
 
-To show up as a FreeCAD add-on, symlink or copy this folder into the FreeCAD
-`Mod` directory (the folder name `BruceWorx` matches `package.xml`). Headless
-use does not need that.
+## In the BruceWorx build (on by default)
+
+The normal BruceWorx build installs this add-on as `Mod/BruceWorxHooks`
+(`CMakeLists.txt`, wired from `src/Mod/CMakeLists.txt`): copied into
+`<build>/Mod/BruceWorxHooks` for `pixi run freecad-release` and installed by
+`pixi run install-release`. It is on by default, so `import bruceworx` works
+in FreeCAD's Python console and **BruceWorx → Assign Part Number…** is in the
+menu. That command runs the same code as the macro, asks for the program and
+document type when the numbering file has more than one, and keeps its
+counter in `<UserAppData>/BruceWorx/numbering/numbering.json` (seeded from
+the example on first use) unless `BW_NUMBERING_CONFIG` is set or a source
+checkout already has `config/numbering.json`.
+
+The installed folder name is `BruceWorxHooks`, not `BruceWorx`: FreeCAD keys
+modules by lower-cased folder name, and `src/Mod/BruceWorx` (preferences)
+already uses that name. `package.xml` is not installed (with a manifest that
+lists no workbench, FreeCAD would skip `Init.py`). `hooks.py` is installed as
+`Mod/BruceWorxHooks/cli/hooks.py`.
+
+Off switches: uncheck **Hooks add-on** on Preferences → BruceWorx
+(`BaseApp/Preferences/BruceWorx/LoadHooks`, next start), start with
+`--disable-addon BruceWorxHooks`, or configure with `-DBUILD_BW_HOOKS=OFF`.
+The CLI below does not depend on any of these.
+
+On stock FreeCAD, symlink or copy this folder into the FreeCAD `Mod`
+directory instead. Headless use does not need that.
 
 ## Tests
 
@@ -303,6 +326,6 @@ so a later split is a copy, not a rewrite:
 cp -a addons/BruceWorx /path/to/BruceWorx
 ```
 
-Nothing under `src/` imports this package. There is no CMake target and no
-C++ change. `package.xml` is the FreeCAD add-on manifest. The license is
+Nothing under `src/` imports this package. The only build glue is this
+folder's `CMakeLists.txt` (install rules, no C++). `package.xml` is the FreeCAD add-on manifest. The license is
 LGPL-2.1-or-later (`LICENSE` in this folder).

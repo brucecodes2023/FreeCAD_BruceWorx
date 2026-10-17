@@ -42,7 +42,7 @@ Confirm these stay visually distinct. The prototype uses a red slash for `Suppre
 
 ## 7. Where the dock lives
 
-* **A. Prototype.** A global bottom dock, any workbench, hidden until **BruceWorx → History Timeline** is checked.
+* **A. Prototype.** A global bottom dock, any workbench, shown by default (BruceWorx rule) and turned off with **BruceWorx → History Timeline** or Preferences → BruceWorx.
 * **B.** Visible only while the PartDesign workbench is active.
 * **C.** Not a dock. Sit it in the tree, or replace the tree for PartDesign bodies.
 
@@ -60,7 +60,7 @@ Should an `Invalid` feature get a red mark? The prototype does not. A sketch tip
 
 ## 11. Keeping it optional
 
-Confirm the add-on stays out of `src/Mod` and out of the default module path, with `Mod/HistoryTimeline/Enabled` defaulting to false. Hard off switches already work without code changes: `ADDON_DISABLED` in this folder, and `--disable-addon HistoryTimeline`.
+**Decided (BruceWorx rule): on by default, with an off switch.** The build installs the add-on as `Mod/HistoryTimeline` and `Mod/HistoryTimeline/Enabled` defaults to true. Off switches: BruceWorx → History Timeline, Preferences → BruceWorx → History timeline, closing the dock, `ADDON_DISABLED` in the installed folder, `--disable-addon HistoryTimeline`, or `-DBUILD_BW_HISTORY_TIMELINE=OFF` at configure time.
 
 ## 12. Patterns
 

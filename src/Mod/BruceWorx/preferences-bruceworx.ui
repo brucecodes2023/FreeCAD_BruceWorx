@@ -7,6 +7,82 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
+    <widget class="QGroupBox" name="groupDefaults">
+     <property name="title">
+      <string>BruceWorx features</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayoutDefaults">
+      <item>
+       <widget class="QLabel" name="labelDefaults">
+        <property name="text">
+         <string>Everything BruceWorx adds is on by default. Uncheck a box to turn that feature off.</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Gui::PrefCheckBox" name="PreferencePack">
+        <property name="toolTip">
+         <string>On by default. Applied once on first start (theme, millimetres, Fusion-like navigation, PartDesign startup). Your previous values are saved first. Uncheck to restore them (same as the BruceWorx Off pack); check to apply the light pack again. Preferences &gt; General &gt; Theme still picks BruceWorx Dark or another theme.</string>
+        </property>
+        <property name="text">
+         <string>BruceWorx preference pack</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>PreferencePack</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>BruceWorx</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Gui::PrefCheckBox" name="HistoryTimelineEnabled">
+        <property name="toolTip">
+         <string>On by default. Same switch as BruceWorx &gt; History Timeline. Closing the dock also turns it off.</string>
+        </property>
+        <property name="text">
+         <string>History timeline (bottom PartDesign history bar)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>Enabled</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/HistoryTimeline</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Gui::PrefCheckBox" name="LoadHooks">
+        <property name="toolTip">
+         <string>On by default. Loads the BruceWorx hooks add-on (Mod/BruceWorxHooks). Takes effect on the next start. The FreeCADCmd hooks.py CLI does not depend on this box.</string>
+        </property>
+        <property name="text">
+         <string>Hooks add-on (part numbers: BruceWorx &gt; Assign Part Number…)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>LoadHooks</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>BruceWorx</cstring>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="groupMacTitleBar">
      <property name="title">
       <string>macOS window</string>

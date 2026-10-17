@@ -753,12 +753,25 @@ def default_snapshot_path() -> str:
     return os.path.join(App.getUserAppDataDir(), "BruceWorx", "stock-snapshot.json")
 
 
+def _sync_defaults_switch(value: bool) -> None:
+    """Keep Preferences → BruceWorx → Preference pack in step with the Theme combo."""
+    try:
+        import bruceworx_defaults
+
+        bruceworx_defaults.sync_switch(value)
+    except Exception:
+        pass
+
+
 def freecad_pre(mode: str) -> None:
     snapshot_if_needed(FreeCADStore(), default_snapshot_path(), mode)
+    _sync_defaults_switch(True)
 
 
 def freecad_off() -> str:
-    return disable(FreeCADStore(), default_snapshot_path())
+    result = disable(FreeCADStore(), default_snapshot_path())
+    _sync_defaults_switch(False)
+    return result
 
 
 def _fmt_float(value: float) -> str:

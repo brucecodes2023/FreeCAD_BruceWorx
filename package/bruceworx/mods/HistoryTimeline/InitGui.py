@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
-"""GUI init. Registers a BruceWorx menu item and leaves the dock hidden.
+"""GUI init. Adds BruceWorx → History Timeline and shows the dock (default on).
 
 FreeCAD execs this file. The module directory is already on sys.path.
 """
