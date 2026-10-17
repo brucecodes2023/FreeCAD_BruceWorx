@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<package format="1" xmlns="https://wiki.freecad.org/Package_Metadata">
+  <name>BruceWorx</name>
+  <description>Headless FreeCADCmd hooks and BruceWorx part numbering ({PROG}-{DT}-{PPPPP}-{SSS}-{REV}).</description>
+  <version>0.1.0</version>
+  <date>2026-10-15</date>
+  <maintainer email="noreply@bruceworx.invalid">BruceWorx</maintainer>
+  <license file="LICENSE">LGPL-2.1-or-later</license>
+  <url type="repository" branch="main">https://github.com/brucecodes2023/FreeCAD_BruceWorx</url>
+  <content>
+    <macro>
+      <file>macros/PartNumber.FCMacro</file>
+    </macro>
+  </content>
+</package>

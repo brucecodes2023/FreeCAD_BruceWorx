@@ -19,6 +19,7 @@ the upstream release tag. Current changes:
   * Added UPSTREAM-SYNC.md (upstream rebase policy)
   * Added this NOTICE file
   * Added .github/workflows/bruceworx-ci.yml (fork CI)
+  * Added addons/BruceWorx (headless hooks and part numbering; Python only)
 
 This list will be updated as features are added. BruceWorx changes are
 intended to be add-ons and preference changes on standard FreeCAD rather

@@ -70,3 +70,6 @@ files_to_translate.txt
 # pixi environments
 .pixi
 *.egg-info
+
+# Local BruceWorx part-number counter (copied from numbering.example.json)
+/addons/BruceWorx/config/numbering.json
