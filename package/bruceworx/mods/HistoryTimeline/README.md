@@ -2,32 +2,23 @@
 
 Python add-on that reads a PartDesign body's history and shows it as a bottom bar. This is the FCB-P1F-15 / FCB-P1F-16 spike. It is not the full timeline build. Bruce reviews the design (FCB-P1F-17) before that build.
 
-The folder is **not** under `src/Mod`, so a normal BruceWorx build does not load it.
+BruceWorx ships it **on by default** (the BruceWorx rule: every feature is on, with an off switch). The normal build copies this folder into `<build>/Mod/HistoryTimeline` (what `pixi run freecad-release` loads) and installs it to `Mod/HistoryTimeline` (`CMakeLists.txt`, wired from `src/Mod/CMakeLists.txt`; build switch `-DBUILD_BW_HISTORY_TIMELINE=OFF`). The dock shows along the bottom of the window on start.
 
-## Turn it on
+The preference is `User parameter:BaseApp/Preferences/Mod/HistoryTimeline/Enabled` (default `true`).
 
-Copy or symlink this directory into FreeCAD's user Mod folder:
-
-```text
-<user-app-data>/Mod/HistoryTimeline
-```
-
-`FreeCAD.getUserAppDataDir()` prints that parent. Or pass the folder that contains `Init.py`:
-
-```text
-freecad -M /path/to/HistoryTimeline
-```
-
-Then use **BruceWorx → History Timeline**. The dock stays hidden until that item is checked. The preference is `User parameter:BaseApp/Preferences/Mod/HistoryTimeline/Enabled` (default `false`).
+On stock FreeCAD (no BruceWorx build), copy or symlink this directory into `<user-app-data>/Mod/HistoryTimeline` (`FreeCAD.getUserAppDataDir()` prints that parent), or start with `freecad -M /path/to/HistoryTimeline`.
 
 ## Turn it off
 
 Any one of these is enough:
 
-* Uncheck **BruceWorx → History Timeline**, or close the dock (both clear the preference).
-* Drop an empty file named `ADDON_DISABLED` in this directory.
+* Uncheck **BruceWorx → History Timeline**, or close the dock (both write `Enabled = false`, so it stays off on later starts).
+* Uncheck **History timeline** on **Preferences → BruceWorx**.
+* Drop an empty file named `ADDON_DISABLED` in the installed `Mod/HistoryTimeline` directory.
 * Start FreeCAD with `--disable-addon HistoryTimeline`.
-* Remove the folder from the module path. That is the default for this fork.
+* Configure the build with `-DBUILD_BW_HISTORY_TIMELINE=OFF`.
+
+The **BruceWorx** menu is kept on the menu bar by `src/Mod/BruceWorx/bruceworx_menu.py`. FreeCAD clears the menu bar on every workbench activation (`MenuManager::setup`), so a menu added once from `InitGui.py` would vanish when the startup workbench loads.
 
 ## What the dock does
 

@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import bruceworx_defaults as defaults  # noqa: E402
 import bruceworx_pack as pack  # noqa: E402
 import ground_grid  # noqa: E402
 
@@ -260,6 +261,113 @@ class GroundGridTest(unittest.TestCase):
         self.assertFalse(ground_grid.should_show(False, True))
         self.assertFalse(ground_grid.should_show(True, False))
         self.assertTrue(ground_grid.should_show(True, True))
+
+
+class DefaultsOnTest(unittest.TestCase):
+    """BruceWorx rule: features ship on, each with an off switch."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.snap = os.path.join(self.tmp.name, "BruceWorx", "stock-snapshot.json")
+        self.store = pack.MemoryStore()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_first_run_applies_pack_once_and_snapshots(self):
+        self.store.set("BaseApp/Preferences/Units", "UserSchema", "int", 3)
+        self.assertEqual(defaults.apply_first_run(self.store, self.snap), "applied")
+        self.assertTrue(defaults.pack_applied(self.store))
+        self.assertTrue(os.path.exists(self.snap))
+        self.assertEqual(self.store.get("BaseApp/Preferences/Units", "UserSchema", "int", -1), 0)
+        self.assertEqual(
+            self.store.get("BaseApp/Preferences/MainWindow", "Theme", "text", ""), "BruceWorx"
+        )
+        # Second start: nothing changes.
+        self.assertEqual(defaults.apply_first_run(self.store, self.snap), "already")
+
+    def test_first_run_does_not_reapply_after_user_turned_pack_off(self):
+        defaults.apply_first_run(self.store, self.snap)
+        pack.disable(self.store, self.snap)  # "BruceWorx Off" from the Theme combo
+        self.assertFalse(defaults.pack_applied(self.store))
+        self.assertEqual(defaults.apply_first_run(self.store, self.snap), "done")
+        self.assertFalse(defaults.pack_applied(self.store))
+
+    def test_switch_off_skips_first_run(self):
+        self.store.set(defaults.GROUP, defaults.SWITCH, "bool", False)
+        self.assertEqual(defaults.apply_first_run(self.store, self.snap), "off")
+        self.assertFalse(defaults.pack_applied(self.store))
+
+    def test_switch_restores_and_reapplies(self):
+        self.store.set("BaseApp/Preferences/Units", "UserSchema", "int", 3)
+        defaults.apply_first_run(self.store, self.snap)
+        self.assertEqual(defaults.on_switch_changed(self.store, self.snap, False), "snapshot")
+        self.assertFalse(defaults.pack_applied(self.store))
+        self.assertEqual(self.store.get("BaseApp/Preferences/Units", "UserSchema", "int", -1), 3)
+        self.assertEqual(defaults.on_switch_changed(self.store, self.snap, False), "noop")
+        self.assertEqual(defaults.on_switch_changed(self.store, self.snap, True), "applied")
+        self.assertTrue(defaults.pack_applied(self.store))
+        self.assertEqual(defaults.on_switch_changed(self.store, self.snap, True), "noop")
+
+    def test_preference_page_has_every_switch_default_on(self):
+        ui = ET.parse(os.path.join(ROOT, "src", "Mod", "BruceWorx", "preferences-bruceworx.ui"))
+        switches = {}
+        for widget in ui.iter("widget"):
+            if widget.get("class") != "Gui::PrefCheckBox":
+                continue
+            props = {p.get("name"): p for p in widget.findall("property")}
+            entry = props["prefEntry"].findtext("cstring")
+            path = props["prefPath"].findtext("cstring")
+            checked = props["checked"].findtext("bool")
+            switches[(path, entry)] = checked
+        for key in (
+            ("BruceWorx", "PreferencePack"),
+            ("Mod/HistoryTimeline", "Enabled"),
+            ("BruceWorx", "LoadHooks"),
+            ("BruceWorx", "FloatingModelTree"),
+            ("MainWindow", "UnifiedTitleAndToolBar"),
+        ):
+            self.assertEqual(switches.get(key), "true", key)
+
+    def test_history_timeline_defaults_on(self):
+        dock = _read(
+            os.path.join(
+                ROOT, "package", "bruceworx", "mods", "HistoryTimeline", "history_timeline", "dock.py"
+            )
+        )
+        self.assertIn("ENABLED_DEFAULT = True", dock)
+        self.assertIn('GetBool("Enabled", ENABLED_DEFAULT)', dock)
+        # The menu bar is rebuilt on workbench switches; the item must go
+        # through the shared re-attaching menu, not menuBar().addMenu().
+        self.assertIn("bruceworx_menu.add_action", dock)
+        self.assertNotIn('menuBar().addMenu("BruceWorx")', dock)
+
+    def test_build_installs_history_timeline_and_hooks(self):
+        mods = _read(os.path.join(ROOT, "src", "Mod", "CMakeLists.txt"))
+        self.assertIn('option(BUILD_BW_HISTORY_TIMELINE', mods)
+        self.assertIn('option(BUILD_BW_HOOKS', mods)
+        self.assertRegex(mods, r'option\(BUILD_BW_HISTORY_TIMELINE "[^"]*" ON\)')
+        self.assertRegex(mods, r'option\(BUILD_BW_HOOKS "[^"]*" ON\)')
+        timeline_dir = os.path.join(ROOT, "package", "bruceworx", "mods", "HistoryTimeline")
+        timeline = _read(os.path.join(timeline_dir, "CMakeLists.txt"))
+        self.assertIn('"${CMAKE_BINARY_DIR}/Mod/HistoryTimeline"', timeline)
+        self.assertIn("DESTINATION Mod/HistoryTimeline", timeline)
+        for rel in re.findall(r"^\s+((?:history_timeline/)?[\w]+\.(?:py|md))$", timeline, re.M):
+            self.assertTrue(os.path.isfile(os.path.join(timeline_dir, rel)), rel)
+        hooks_dir = os.path.join(ROOT, "addons", "BruceWorx")
+        hooks = _read(os.path.join(hooks_dir, "CMakeLists.txt"))
+        self.assertIn('"${CMAKE_BINARY_DIR}/Mod/BruceWorxHooks"', hooks)
+        self.assertIn("DESTINATION Mod/BruceWorxHooks", hooks)
+        self.assertNotIn("package.xml", hooks.split("SET(BruceWorxHooks_SRCS")[1].split(")")[0])
+        for rel in re.findall(r"^\s+([\w/]+\.(?:py|json|FCMacro|md))$", hooks, re.M):
+            self.assertTrue(os.path.isfile(os.path.join(hooks_dir, rel)), rel)
+        # Every Python file of the bruceworx package is shipped.
+        for name in os.listdir(os.path.join(hooks_dir, "bruceworx")):
+            if name.endswith(".py"):
+                self.assertIn(f"bruceworx/{name}", hooks, name)
+        bw = _read(os.path.join(ROOT, "src", "Mod", "BruceWorx", "CMakeLists.txt"))
+        for name in ("bruceworx_defaults.py", "bruceworx_menu.py"):
+            self.assertIn(name, bw)
 
 
 if __name__ == "__main__":

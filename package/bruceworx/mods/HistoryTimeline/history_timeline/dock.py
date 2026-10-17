@@ -1,8 +1,11 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 """FreeCAD dock that shows ``read_timeline`` and rolls ``Body.Tip``.
 
-The dock is created only after the user turns the addon on. Closing the dock
-or running the toggle command writes the preference back to false.
+BruceWorx ships this on by default: ``Mod/HistoryTimeline/Enabled`` defaults to
+true, so the dock shows on a normal start. The off switches are the
+BruceWorx → History Timeline menu item, the "History timeline" box on
+Preferences → BruceWorx, or closing the dock. All three write the preference
+back to false; the dock then stays hidden on later starts.
 """
 
 from __future__ import annotations
@@ -23,6 +26,9 @@ _state = {
     "dock": None,
     "action": None,
     "observer": None,
+    "pref_observer": None,
+    "pref_group": None,
+    "syncing": False,
     "installed": False,
 }
 
@@ -31,8 +37,11 @@ def prefs():
     return FreeCAD.ParamGet(PARAM_PATH)
 
 
+ENABLED_DEFAULT = True
+
+
 def is_enabled() -> bool:
-    return bool(prefs().GetBool("Enabled", False))
+    return bool(prefs().GetBool("Enabled", ENABLED_DEFAULT))
 
 
 def _bottom_area():
@@ -269,7 +278,7 @@ class _ToggleCommand:
             "MenuText": "Toggle history timeline",
             "ToolTip": (
                 "Show or hide the PartDesign history timeline. "
-                "Off by default. Preference: Mod/HistoryTimeline/Enabled."
+                "On by default. Preference: Mod/HistoryTimeline/Enabled."
             ),
         }
 
@@ -312,7 +321,11 @@ def _drop_observer():
 
 def set_enabled(enabled: bool, hide_widget: bool = True):
     """Persist the preference and show or hide the dock."""
-    prefs().SetBool("Enabled", bool(enabled))
+    _state["syncing"] = True
+    try:
+        prefs().SetBool("Enabled", bool(enabled))
+    finally:
+        _state["syncing"] = False
     action = _state["action"]
     if action is not None:
         action.blockSignals(True)
@@ -333,8 +346,46 @@ def set_enabled(enabled: bool, hide_widget: bool = True):
             dock.hide()
 
 
+class _PrefObserver:
+    """Follows ``Enabled`` when it is changed elsewhere (the preference page)."""
+
+    def onChange(self, _group, name):
+        if name != "Enabled" or _state["syncing"]:
+            return
+        QtCore.QTimer.singleShot(0, _follow_pref)
+
+
+def _follow_pref():
+    enabled = is_enabled()
+    dock = _state["dock"]
+    visible = dock is not None and dock.isVisible()
+    if enabled != visible:
+        set_enabled(enabled)
+
+
+def _menu_fallback(window):
+    """Same object name and re-attach rule as BruceWorx's bruceworx_menu, for
+    running this add-on on a FreeCAD without the BruceWorx module."""
+    menu = window.findChild(QtWidgets.QMenu, "BruceWorxMenu")
+    if menu is None:
+        menu = QtWidgets.QMenu("BruceWorx", window)
+        menu.setObjectName("BruceWorxMenu")
+
+    def attach(*_args):
+        bar = window.menuBar()
+        if menu.menuAction() not in bar.actions():
+            bar.addMenu(menu)
+
+    try:
+        window.workbenchActivated.connect(lambda _name: QtCore.QTimer.singleShot(0, attach))
+    except Exception:
+        pass
+    attach()
+    return menu
+
+
 def install():
-    """Register the menu command. Does not show the dock unless the preference is on."""
+    """Register the menu command and show the dock unless the preference is off."""
     if _state["installed"]:
         return
     if not FreeCAD.GuiUp:
@@ -344,17 +395,33 @@ def install():
     FreeCADGui.addCommand(COMMAND_NAME, _ToggleCommand())
 
     window = FreeCADGui.getMainWindow()
-    menu = window.menuBar().addMenu("BruceWorx")
     action = QtGui.QAction("History Timeline", window)
+    action.setObjectName("HistoryTimelineAction")
     action.setCheckable(True)
     action.setChecked(is_enabled())
     action.setToolTip(
-        "Bottom PartDesign history bar. Off by default. "
-        "Uncheck, close the dock, or pass --disable-addon HistoryTimeline."
+        "Bottom PartDesign history bar. On by default. "
+        "Uncheck, close the dock, or turn it off on Preferences → BruceWorx."
     )
     action.toggled.connect(set_enabled)
-    menu.addAction(action)
+    try:
+        # The menu bar is rebuilt on every workbench switch; bruceworx_menu
+        # keeps the BruceWorx menu on it.
+        import bruceworx_menu
+
+        bruceworx_menu.add_action(action)
+    except ImportError:
+        _menu_fallback(window).addAction(action)
     _state["action"] = action
+
+    if _state["pref_observer"] is None:
+        observer = _PrefObserver()
+        # Keep the group handle: the Python wrapper returned by ParamGet
+        # detaches its observers when it is garbage collected.
+        group = prefs()
+        group.Attach(observer)
+        _state["pref_observer"] = observer
+        _state["pref_group"] = group
 
     if is_enabled():
         set_enabled(True)
