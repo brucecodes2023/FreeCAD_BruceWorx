@@ -35,5 +35,31 @@
       <tag>background</tag>
       <tag>dark</tag>
     </preferencepack>
+    <preferencepack>
+      <name>BruceWorx</name>
+      <type>Theme</type>
+      <description>Apple-clean light theme, millimetre units, Fusion-like navigation (Revit style: middle-mouse pan, Shift+middle orbit), PartDesign startup, and the PartDesign / Assembly / Sketcher / Part / TechDraw workbench set. Applying it snapshots current preferences. Apply the BruceWorx Off pack to restore them.</description>
+      <version>1.0.0</version>
+      <tag>built-in</tag>
+      <tag>bruceworx</tag>
+      <tag>light</tag>
+    </preferencepack>
+    <preferencepack>
+      <name>BruceWorx Dark</name>
+      <type>Theme</type>
+      <description>Same BruceWorx preferences as the light pack, with the dark stylesheet tokens and a dark viewport. Does not replace the snapshot taken by the first BruceWorx apply.</description>
+      <version>1.0.0</version>
+      <tag>built-in</tag>
+      <tag>bruceworx</tag>
+      <tag>dark</tag>
+    </preferencepack>
+    <preferencepack>
+      <name>BruceWorx Off</name>
+      <type>Preference Pack</type>
+      <description>Turns BruceWorx off and restores the preferences saved before it was applied. Stock FreeCAD defaults return for any key that was not set before.</description>
+      <version>1.0.0</version>
+      <tag>built-in</tag>
+      <tag>bruceworx</tag>
+    </preferencepack>
   </content>
 </package>

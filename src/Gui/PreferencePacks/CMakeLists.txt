@@ -7,6 +7,9 @@ SET(PreferencePacks_Directories
         "Dark behave"
         "FreeCAD Light"
         "FreeCAD Dark"
+        "BruceWorx"
+        "BruceWorx Dark"
+        "BruceWorx Off"
 )
 
 ADD_CUSTOM_TARGET(PreferencePacks_data ALL

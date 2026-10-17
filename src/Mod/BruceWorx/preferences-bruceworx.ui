@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>BruceWorxPreferences</class>
+ <widget class="QWidget" name="BruceWorxPreferences">
+  <property name="windowTitle">
+   <string>BruceWorx</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QGroupBox" name="groupMacTitleBar">
+     <property name="title">
+      <string>macOS window</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayoutMac">
+      <item>
+       <widget class="QLabel" name="labelMac">
+        <property name="text">
+         <string>On by default. Unified title bar and toolbar, with the native close, minimize, and zoom buttons in that bar. Uncheck to restore the stock title bar. macOS only; other systems store the preference and ignore it. Qt 6.8 documents painting problems for this mode when the window contains an OpenGL view (the 3D view) or when toolbars are moved. Confirm that on a Mac.</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Gui::PrefCheckBox" name="UnifiedTitleAndToolBar">
+        <property name="toolTip">
+         <string>On by default. Calls QMainWindow.setUnifiedTitleAndToolBarOnMac. Uncheck to set that property false, which is Qt stock. Known risk: Qt 6.8 documents painting problems when the window contains an OpenGL view or movable toolbars. Verify on a Mac.</string>
+        </property>
+        <property name="text">
+         <string>Unified title bar and toolbar on macOS</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>UnifiedTitleAndToolBar</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>MainWindow</cstring>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupModelTree">
+     <property name="title">
+      <string>Floating model tree</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayoutTree">
+      <item>
+       <widget class="QLabel" name="labelTree">
+        <property name="text">
+         <string>On by default. Puts the model tree on the existing left overlay panel (auto-hide, transparency, width, and insets below). Uncheck to write the previous overlay settings back and restore the stock docks. The panel stays pinned to the left edge; a free-floating position needs a later OverlayManager change.</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Gui::PrefCheckBox" name="FloatingModelTree">
+        <property name="toolTip">
+         <string>On by default. Overlay the Model dock (or Tree view, if the panels are split). Uncheck to restore the stock docks.</string>
+        </property>
+        <property name="text">
+         <string>Overlay the model tree</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>FloatingModelTree</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>BruceWorx</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Gui::PrefCheckBox" name="FloatingModelTreeAutoHide">
+        <property name="toolTip">
+         <string>OverlayLeft AutoHide. The panel hides when the pointer leaves and shows on hover.</string>
+        </property>
+        <property name="text">
+         <string>Auto-hide</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>FloatingModelTreeAutoHide</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>BruceWorx</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Gui::PrefCheckBox" name="FloatingModelTreeTransparent">
+        <property name="toolTip">
+         <string>OverlayLeft Transparent, plus the BruceWorx model-tree stylesheet (semi-transparent background).</string>
+        </property>
+        <property name="text">
+         <string>Transparent background</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>FloatingModelTreeTransparent</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>BruceWorx</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QFormLayout" name="formLayoutTree">
+        <item row="0" column="0">
+         <widget class="QLabel" name="labelWidth">
+          <property name="text">
+           <string>Width</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="Gui::PrefSpinBox" name="FloatingModelTreeWidth">
+          <property name="toolTip">
+           <string>OverlayLeft Width. Values of 100 or below are treated as broken by FreeCAD and ignored.</string>
+          </property>
+          <property name="suffix">
+           <string> px</string>
+          </property>
+          <property name="minimum">
+           <number>120</number>
+          </property>
+          <property name="maximum">
+           <number>2000</number>
+          </property>
+          <property name="value">
+           <number>280</number>
+          </property>
+          <property name="prefEntry" stdset="0">
+           <cstring>FloatingModelTreeWidth</cstring>
+          </property>
+          <property name="prefPath" stdset="0">
+           <cstring>BruceWorx</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="labelTop">
+          <property name="text">
+           <string>Top offset</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="Gui::PrefSpinBox" name="FloatingModelTreeTopOffset">
+          <property name="toolTip">
+           <string>OverlayLeft Offset1. Moves the panel down from the top of the window.</string>
+          </property>
+          <property name="suffix">
+           <string> px</string>
+          </property>
+          <property name="minimum">
+           <number>0</number>
+          </property>
+          <property name="maximum">
+           <number>2000</number>
+          </property>
+          <property name="value">
+           <number>8</number>
+          </property>
+          <property name="prefEntry" stdset="0">
+           <cstring>FloatingModelTreeTopOffset</cstring>
+          </property>
+          <property name="prefPath" stdset="0">
+           <cstring>BruceWorx</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="labelBottom">
+          <property name="text">
+           <string>Bottom inset</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="Gui::PrefSpinBox" name="FloatingModelTreeBottomInset">
+          <property name="toolTip">
+           <string>OverlayLeft Offset2. Shortens the panel from the bottom. Height otherwise fills the side.</string>
+          </property>
+          <property name="suffix">
+           <string> px</string>
+          </property>
+          <property name="minimum">
+           <number>0</number>
+          </property>
+          <property name="maximum">
+           <number>2000</number>
+          </property>
+          <property name="value">
+           <number>8</number>
+          </property>
+          <property name="prefEntry" stdset="0">
+           <cstring>FloatingModelTreeBottomInset</cstring>
+          </property>
+          <property name="prefPath" stdset="0">
+           <cstring>BruceWorx</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="labelLeft">
+          <property name="text">
+           <string>Left inset</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="Gui::PrefSpinBox" name="FloatingModelTreeLeftInset">
+          <property name="toolTip">
+           <string>Saved as OverlayLeft Offset3. The current overlay pins the left panel to the edge, so this inset is stored and not applied yet.</string>
+          </property>
+          <property name="suffix">
+           <string> px</string>
+          </property>
+          <property name="minimum">
+           <number>0</number>
+          </property>
+          <property name="maximum">
+           <number>2000</number>
+          </property>
+          <property name="value">
+           <number>0</number>
+          </property>
+          <property name="prefEntry" stdset="0">
+           <cstring>FloatingModelTreeLeftInset</cstring>
+          </property>
+          <property name="prefPath" stdset="0">
+           <cstring>BruceWorx</cstring>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>Gui::PrefCheckBox</class>
+   <extends>QCheckBox</extends>
+   <header>Gui/PrefWidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>Gui::PrefSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>Gui/PrefWidgets.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

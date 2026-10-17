@@ -363,6 +363,9 @@ MainWindow::MainWindow(QWidget* parent, Qt::WindowFlags f)
                     sb->setVisible(d->hGrp->GetBool("StatusBar", sb->isVisible()));
                 }
             }
+            else if (boost::equals(Name, "UnifiedTitleAndToolBar")) {
+                applyMacUnifiedTitleBar();
+            }
             else if (boost::equals(Name, "MainWindowState")) {
                 OverlayManager::instance()->reload(OverlayManager::ReloadMode::ReloadPause);
                 d->restoreStateTimer.start(100);
@@ -493,6 +496,10 @@ MainWindow::MainWindow(QWidget* parent, Qt::WindowFlags f)
     setAcceptDrops(true);
 
     statusBar()->showMessage(tr("Ready"), 2001);
+
+    // [BW] Before the window is shown. Toolbars are created later; reapplied
+    // from activateWorkbench and loadWindowSettings.
+    applyMacUnifiedTitleBar();
 }
 
 MainWindow::~MainWindow()
@@ -1023,6 +1030,24 @@ void MainWindow::activatePreviousWindow()
     }
 }
 
+void MainWindow::applyMacUnifiedTitleBar()
+{
+    // [BW] FCB-P1F-02. Missing key means on. Explicit false sets the property
+    // false, which is Qt's stock value (useUnifiedToolBar starts false).
+    //
+    // This window keeps Qt::Window, so the close / minimize / zoom buttons
+    // stay the platform widgets. The call is a no-op off macOS.
+    //
+    // Known risk (Qt 6.8 docs): unified mode can paint wrong with
+    // QOpenGLWidget, which the 3D view is, and with movable toolbars.
+    // Confirm on a Mac. Not checked here: this environment has no macOS display.
+    if (!d->hGrp) {
+        return;
+    }
+    const bool enable = d->hGrp->GetBool("UnifiedTitleAndToolBar", true);
+    setUnifiedTitleAndToolBarOnMac(enable);
+}
+
 void MainWindow::activateWorkbench(const QString& name)
 {
     // remember workbench by tab (if enabled)
@@ -1039,6 +1064,9 @@ void MainWindow::activateWorkbench(const QString& name)
     // emit this signal
     Q_EMIT workbenchActivated(name);
     updateActions(true);
+
+    // [BW] Workbench switches rebuild top toolbars. Re-apply, or clear it if off.
+    applyMacUnifiedTitleBar();
 }
 
 void MainWindow::whatsThis()
@@ -1966,6 +1994,10 @@ void MainWindow::loadWindowSettings()
 
     d->restoreWindowState(windowState);
     std::clog << "Main window restored" << std::endl;
+
+    // [BW] Qt documents this as needing to be set before the window is shown,
+    // with toolbars already in the top area (workbench activation ran first).
+    applyMacUnifiedTitleBar();
 
     max ? showMaximized() : show();
 
