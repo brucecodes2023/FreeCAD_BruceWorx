@@ -1,5 +1,13 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
-"""Load the BruceWorx ground grid only when the preference pack is applied."""
+"""BruceWorx GUI init. Loaded for every session.
+
+Installs the preference page and overlay model tree (both default on), and
+starts the ground grid, which shows only while the preference pack is applied.
+"""
+
+import BruceWorx
+
+BruceWorx.install()
 
 try:
     import ground_grid
