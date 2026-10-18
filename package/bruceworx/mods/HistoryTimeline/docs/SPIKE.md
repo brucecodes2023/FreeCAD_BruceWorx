@@ -82,6 +82,6 @@ So a timeline reorder is a new policy, not a wrapped command. The prototype leav
 
 ## Not in this spike
 
-No C++ changes. The add-on is `package/bruceworx/mods/HistoryTimeline`. The fork build does not load it. The BruceWorx CI workflow is unchanged, including the self-hosted macOS job.
+No C++ changes. The add-on is `package/bruceworx/mods/HistoryTimeline`. The fork build now installs it as `Mod/HistoryTimeline`, on by default (BruceWorx rule). The BruceWorx CI workflow is unchanged, including the self-hosted macOS job.
 
 The dock (FCB-P1F-16) only reads `Group`, sets `Tip`, toggles `Suppressed`, and calls `setEdit`. Questions that block the full build are in [REVIEW.md](REVIEW.md).

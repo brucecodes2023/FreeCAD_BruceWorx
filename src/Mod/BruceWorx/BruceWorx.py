@@ -59,6 +59,7 @@ _busy = False
 _scheduled = False
 _installed = False
 _observer = None
+_observer_group = None
 
 
 def parse_widgets(text):
@@ -307,7 +308,7 @@ class _PrefObserver:
 
 def install():
     """Register the preference page and apply the current (default on) state."""
-    global _installed, _observer
+    global _installed, _observer, _observer_group
     if _installed:
         return
     _installed = True
@@ -318,7 +319,10 @@ def install():
         ui = os.path.join(os.path.dirname(os.path.abspath(__file__)), "preferences-bruceworx.ui")
         FreeCADGui.addPreferencePage(ui, "BruceWorx")
         _observer = _PrefObserver()
-        FreeCAD.ParamGet(PREFS_PATH).Attach(_observer)
+        # Keep the group handle: ParamGet returns a new Python wrapper each
+        # time, and the wrapper detaches its observers when it is collected.
+        _observer_group = FreeCAD.ParamGet(PREFS_PATH)
+        _observer_group.Attach(_observer)
         sync_live()
     except Exception:
         import traceback

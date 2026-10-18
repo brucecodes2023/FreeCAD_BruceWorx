@@ -191,21 +191,39 @@ def _refresh_action() -> None:
         pass
 
 
+def _bruceworx_menu():
+    """The shared BruceWorx menu. The Tools menu is rebuilt on every workbench
+    switch (MenuManager::setup clears the menu bar), so an action added there
+    from InitGui disappears; the BruceWorx menu is re-attached instead."""
+    try:
+        import bruceworx_menu
+
+        return bruceworx_menu.get_menu()
+    except Exception:
+        return _tools_menu()
+
+
 def _install_menu() -> None:
     if _STATE["action"] is not None:
         _refresh_action()
         return
-    menu = _tools_menu()
+    menu = _bruceworx_menu()
     if menu is None:
         return
     from PySide import QtGui  # FreeCAD 1.1 ships PySide (Qt6 shims) as PySide
 
     action = QtGui.QAction(menu)
-    action.setText("BruceWorx Ground Grid")
+    action.setText("Ground Grid")
+    action.setObjectName("BruceWorxGroundGridAction")
     action.setCheckable(True)
     action.setToolTip("Show or hide the BruceWorx 3D ground grid")
     action.triggered.connect(lambda _checked=False: toggle())
-    menu.addAction(action)
+    try:
+        import bruceworx_menu
+
+        bruceworx_menu.add_action(action)
+    except Exception:
+        menu.addAction(action)
     _STATE["action"] = action
     _refresh_action()
 
@@ -214,15 +232,22 @@ def _remove_menu() -> None:
     action = _STATE["action"]
     if action is None:
         return
-    menu = _tools_menu()
-    if menu is not None:
-        menu.removeAction(action)
+    menus = [_tools_menu()]
+    try:
+        import bruceworx_menu
+
+        menus.append(bruceworx_menu.get_menu(create=False))
+    except Exception:
+        pass
+    for menu in menus:
+        if menu is not None:
+            menu.removeAction(action)
     action.deleteLater()
     _STATE["action"] = None
 
 
 def activate() -> None:
-    """Start showing the grid and add the Tools menu toggle."""
+    """Start showing the grid and add the BruceWorx → Ground Grid toggle."""
     import FreeCADGui as Gui
 
     if _STATE["observer"] is None:

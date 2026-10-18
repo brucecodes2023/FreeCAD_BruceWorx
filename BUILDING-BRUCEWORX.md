@@ -17,6 +17,37 @@ Supported targets:
 Qt6 is the only Qt version used. `pixi.toml` pins `qt6-main >=6.8,<6.9` and
 `pyside6`, and adds `noqt5`.
 
+## Rule: BruceWorx features ship on by default
+
+Everything built for BruceWorx is installed by the normal build and enabled
+by default, with an off switch on **Preferences → BruceWorx** (also reachable
+from **BruceWorx → BruceWorx Preferences…**). Nothing needs a manual copy,
+symlink, or "apply" step after `pixi run build-release`.
+
+| Feature | Where it lives | Default | Off switch |
+|---|---|---|---|
+| Unified title bar + toolbar (macOS) | `src/Gui/MainWindow.cpp` | on | Preferences → BruceWorx → macOS window |
+| Overlay (floating) model tree | `src/Mod/BruceWorx` | on | Preferences → BruceWorx → Floating model tree |
+| BruceWorx preference pack | `src/Gui/PreferencePacks`, `src/Mod/BruceWorx/bruceworx_defaults.py` | applied once on first start | Preferences → BruceWorx → BruceWorx preference pack (restores your previous values) |
+| History Timeline dock | `package/bruceworx/mods/HistoryTimeline` → `Mod/HistoryTimeline` | on | BruceWorx → History Timeline, Preferences → BruceWorx, or close the dock |
+| Hooks / part numbers | `addons/BruceWorx` → `Mod/BruceWorxHooks` | on | Preferences → BruceWorx → Hooks add-on (next start) |
+
+First-start preference pack: when the pack has never been applied and the
+switch is on, BruceWorx applies the light pack once, before the startup
+workbench loads. Every key the pack writes is saved to
+`<UserAppData>/BruceWorx/stock-snapshot.json` first, so an existing profile
+loses nothing: unchecking the switch (or applying the "BruceWorx Off" pack)
+writes those values back. It is applied at most once per profile
+(`BruceWorx/FirstRunPackDone`); after you turn it off or pick another theme it
+is not re-applied. The Qt style and toolbar icon size are read before
+add-ons load, so those two take effect from the second start.
+
+Build-time switches, for packagers only: `-DBUILD_BW_HISTORY_TIMELINE=OFF`,
+`-DBUILD_BW_HOOKS=OFF`. New BruceWorx features follow the same pattern: on by
+default, a `Gui::PrefCheckBox` on `src/Mod/BruceWorx/preferences-bruceworx.ui`
+to turn them off, and an install rule so `build/<preset>/bin/FreeCAD` loads
+them without an install step.
+
 ## 1. Prerequisites
 
 ### Both platforms

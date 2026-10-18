@@ -147,3 +147,22 @@ endif(BUILD_WEB)
 # [BW] Python only: preference page, overlay model-tree config,
 # preference-pack helper and ground grid. No C++.
 add_subdirectory(BruceWorx)
+
+# [BW] BruceWorx rule: everything ships on by default, with an off switch on
+# Preferences -> BruceWorx. These two Python add-ons live outside src/Mod and
+# are copied into <build>/Mod (used by build/<preset>/bin/FreeCAD) and
+# installed to Mod/ by the normal build.
+option(BUILD_BW_HISTORY_TIMELINE "BruceWorx: install the History Timeline add-on (Mod/HistoryTimeline)" ON)
+option(BUILD_BW_HOOKS "BruceWorx: install the hooks / part-number add-on (Mod/BruceWorxHooks)" ON)
+if(BUILD_BW_HISTORY_TIMELINE)
+    add_subdirectory(
+        ${CMAKE_SOURCE_DIR}/package/bruceworx/mods/HistoryTimeline
+        ${CMAKE_BINARY_DIR}/bruceworx/HistoryTimeline
+    )
+endif()
+if(BUILD_BW_HOOKS)
+    add_subdirectory(
+        ${CMAKE_SOURCE_DIR}/addons/BruceWorx
+        ${CMAKE_BINARY_DIR}/bruceworx/BruceWorxHooks
+    )
+endif()

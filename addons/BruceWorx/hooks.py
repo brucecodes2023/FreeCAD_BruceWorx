@@ -18,7 +18,12 @@ import os
 import sys
 import traceback
 
-_ROOT = os.path.dirname(os.path.abspath(__file__))
+_HERE = os.path.dirname(os.path.abspath(__file__))
+# Source checkout: hooks.py sits next to bruceworx/. Installed build
+# (Mod/BruceWorxHooks/cli/hooks.py): one level up. Kept out of the add-on's
+# top folder there because FreeCAD puts that folder on sys.path, and a
+# top-level hooks.py would run the CLI on any ``import hooks``.
+_ROOT = _HERE if os.path.isdir(os.path.join(_HERE, "bruceworx")) else os.path.dirname(_HERE)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 

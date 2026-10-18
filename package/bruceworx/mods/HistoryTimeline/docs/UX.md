@@ -43,7 +43,7 @@ The menu card is drawn so the disabled reorder items stay visible. In FreeCAD th
 
 Which body: `ActiveView.getActiveObject("pdbody")`. If nothing is active, the first `PartDesign::Body` in the document, labeled "(first body — none active)". Empty state if there is no body.
 
-The bar refreshes on document create/change/delete, undo/redo, and document activation. Closing the dock, or unchecking **BruceWorx → History Timeline**, sets `Mod/HistoryTimeline/Enabled` back to false.
+The bar refreshes on document create/change/delete, undo/redo, and document activation. The dock is on by default. Closing the dock, unchecking **BruceWorx → History Timeline**, or unchecking it on Preferences → BruceWorx sets `Mod/HistoryTimeline/Enabled` to false.
 
 ## What is intentionally not in the prototype
 
