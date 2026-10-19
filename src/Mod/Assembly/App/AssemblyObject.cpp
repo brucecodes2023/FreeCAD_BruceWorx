@@ -146,6 +146,8 @@ int AssemblyObject::solve(bool enableRedo, bool updateJCS)
     mbdAssembly = makeMbdAssembly();
     objectPartMap.clear();
     motions.clear();
+    markerData.clear();
+    limitChecks.clear();
 
     auto groundedObjs = fixGroundedParts();
     if (groundedObjs.empty()) {
@@ -176,6 +178,9 @@ int AssemblyObject::solve(bool enableRedo, bool updateJCS)
     }
 
     setNewPlacements();
+    saveLastGoodPlacements();
+    lastLimitViolation = limitViolation();
+    warnViolatedLimits();
 
     redrawJointPlacements(joints);
 
@@ -294,55 +299,240 @@ void AssemblyObject::preDrag(std::vector<App::DocumentObject*> dragParts)
     }
 }
 
-void AssemblyObject::doDragStep()
+// [BW] Moves an MbD part to a placement (dragging, or putting it back).
+static void moveMbdPart(const std::shared_ptr<ASMTPart>& mbdPart, const Base::Placement& plc)
+{
+    Base::Vector3d pos = plc.getPosition();
+    mbdPart->updateMbDFromPosition3D(std::make_shared<FullColumn<double>>(ListD {pos.x, pos.y, pos.z}));
+
+    Base::Rotation rot = plc.getRotation();
+    Base::Matrix4D mat;
+    rot.getValue(mat);
+    Base::Vector3d r0 = mat.getRow(0);
+    Base::Vector3d r1 = mat.getRow(1);
+    Base::Vector3d r2 = mat.getRow(2);
+    mbdPart->updateMbDFromRotationMatrix(r0.x, r0.y, r0.z, r1.x, r1.y, r1.z, r2.x, r2.y, r2.z);
+}
+
+bool AssemblyObject::runDragStepTo(const std::vector<Base::Placement>& dragPlacements)
+{
+    lastRejectWasLimit = false;
+    std::vector<std::shared_ptr<MbD::ASMTPart>> dragMbdParts;
+
+    for (size_t i = 0; i < draggedParts.size(); ++i) {
+        if (!draggedParts[i]) {
+            continue;
+        }
+        auto mbdPart = getMbDPart(draggedParts[i]);
+        dragMbdParts.push_back(mbdPart);
+        moveMbdPart(mbdPart, dragPlacements[i]);
+    }
+
+    // Timing mbdAssembly->runDragStep()
+    auto dragPartsVec = std::make_shared<std::vector<std::shared_ptr<ASMTPart>>>(dragMbdParts);
+    mbdAssembly->runDragStep(dragPartsVec);
+
+    // Timing the validation and placement setting
+    return validateNewPlacements();
+}
+
+bool AssemblyObject::doDragStep()
 {
     try {
-        std::vector<std::shared_ptr<MbD::ASMTPart>> dragMbdParts;
-
-        for (auto& part : draggedParts) {
-            if (!part) {
-                continue;
-            }
-
-            auto mbdPart = getMbDPart(part);
-            dragMbdParts.push_back(mbdPart);
-
-            // Update the MBD part's position
-            Base::Placement plc = getPlacementFromProp(part, "Placement");
-            Base::Vector3d pos = plc.getPosition();
-            mbdPart->updateMbDFromPosition3D(
-                std::make_shared<FullColumn<double>>(ListD {pos.x, pos.y, pos.z})
-            );
-
-            // Update the MBD part's rotation
-            Base::Rotation rot = plc.getRotation();
-            Base::Matrix4D mat;
-            rot.getValue(mat);
-            Base::Vector3d r0 = mat.getRow(0);
-            Base::Vector3d r1 = mat.getRow(1);
-            Base::Vector3d r2 = mat.getRow(2);
-            mbdPart->updateMbDFromRotationMatrix(r0.x, r0.y, r0.z, r1.x, r1.y, r1.z, r2.x, r2.y, r2.z);
+        // The view has already moved the dragged parts to follow the mouse.
+        std::vector<Base::Placement> targets;
+        for (auto* part : draggedParts) {
+            targets.push_back(part ? getPlacementFromProp(part, "Placement") : Base::Placement());
         }
 
-        // Timing mbdAssembly->runDragStep()
-        auto dragPartsVec = std::make_shared<std::vector<std::shared_ptr<ASMTPart>>>(dragMbdParts);
-        mbdAssembly->runDragStep(dragPartsVec);
+        bool ok = runDragStepTo(targets);
 
-        // Timing the validation and placement setting
-        if (validateNewPlacements()) {
-            setNewPlacements();
+        // [BW] A step that would pass a joint limit is cut back so the part
+        // stops at the limit: halve the move from the last good placement.
+        if (!ok && lastRejectWasLimit) {
+            std::vector<Base::Placement> starts;
+            for (size_t i = 0; i < draggedParts.size(); ++i) {
+                Base::Placement start = targets[i];
+                for (auto& [obj, plc] : lastGoodPlacements) {
+                    if (obj == draggedParts[i]) {
+                        start = plc;
+                        break;
+                    }
+                }
+                starts.push_back(start);
+            }
+            auto towards = [&](double t) {
+                std::vector<Base::Placement> plcs;
+                for (size_t i = 0; i < starts.size(); ++i) {
+                    plcs.push_back(Base::Placement::sclerp(starts[i], targets[i], t));
+                }
+                return plcs;
+            };
 
-            auto joints = getJoints(false);
-            for (auto* joint : joints) {
-                if (joint->Visibility.getValue()) {
-                    // redraw only the moving joint as its quite slow as its python code.
-                    redrawJointPlacement(joint);
+            double good = 0.0;
+            double bad = 1.0;
+            for (int i = 0; i < 6; ++i) {
+                double mid = (good + bad) / 2.0;
+                restoreLastGoodPlacements(false);
+                if (runDragStepTo(towards(mid))) {
+                    good = mid;
+                }
+                else {
+                    bad = mid;
                 }
             }
+            restoreLastGoodPlacements(false);
+            ok = good > 0.0 && runDragStepTo(towards(good));
+            if (!ok) {
+                restoreLastGoodPlacements(true);  // back off the mouse placement
+                return false;
+            }
         }
+        if (!ok) {
+            return false;
+        }
+
+        setNewPlacements();
+        saveLastGoodPlacements();
+
+        auto joints = getJoints(false);
+        for (auto* joint : joints) {
+            if (joint->Visibility.getValue()) {
+                // redraw only the moving joint as its quite slow as its python code.
+                redrawJointPlacement(joint);
+            }
+        }
+        return true;
     }
     catch (...) {
         // We do nothing if a solve step fails.
+    }
+    return false;
+}
+
+void AssemblyObject::saveLastGoodPlacements()
+{
+    lastGoodPlacements.clear();
+    for (auto& pair : objectPartMap) {
+        if (pair.first) {
+            lastGoodPlacements.emplace_back(pair.first, getPlacementFromProp(pair.first, "Placement"));
+        }
+    }
+}
+
+void AssemblyObject::restoreLastGoodPlacements(bool properties)
+{
+    for (auto& [obj, plc] : lastGoodPlacements) {
+        auto it = objectPartMap.find(obj);
+        if (it == objectPartMap.end() || !it->second.part) {
+            continue;
+        }
+        Base::Placement mbdPlc = plc;
+        if (!it->second.offsetPlc.isIdentity()) {
+            mbdPlc = plc * it->second.offsetPlc.inverse();
+        }
+        moveMbdPart(it->second.part, mbdPlc);
+
+        if (properties) {
+            auto* propPlacement = dynamic_cast<App::PropertyPlacement*>(
+                obj->getPropertyByName("Placement")
+            );
+            if (propPlacement && !propPlacement->getValue().isSame(plc)) {
+                propPlacement->setValue(plc);
+                obj->purgeTouched();
+            }
+        }
+    }
+}
+
+void AssemblyObject::addLimitCheck(
+    App::DocumentObject* joint,
+    const std::string& markerI,
+    const std::string& markerJ,
+    bool isAngle,
+    bool minEnabled,
+    bool maxEnabled,
+    double min,
+    double max,
+    double zero
+)
+{
+    auto itI = markerData.find(markerI);
+    auto itJ = markerData.find(markerJ);
+    if (itI == markerData.end() || itJ == markerData.end() || (!minEnabled && !maxEnabled)) {
+        return;
+    }
+    limitChecks.push_back({joint, itI->second, itJ->second, isAngle, minEnabled, maxEnabled, min, max, zero});
+}
+
+// Angle (degrees, -180 to 180) or length (mm) of the joint, measured from the
+// datum zero, as the solver currently has it.
+double AssemblyObject::limitReading(const LimitCheck& check)
+{
+    Base::Placement plcI = getMbdPlacement(check.markerI.part) * check.markerI.plc;
+    Base::Placement plcJ = getMbdPlacement(check.markerJ.part) * check.markerJ.plc;
+    Base::Placement rel = plcI.inverse() * plcJ;
+    if (!check.isAngle) {
+        return rel.getPosition().z - check.zero;
+    }
+    Base::Vector3d x = rel.getRotation().multVec(Base::Vector3d(1.0, 0.0, 0.0));
+    double angle = Base::toDegrees(std::atan2(x.y, x.x)) - check.zero;
+    angle = std::fmod(angle + 180.0, 360.0);
+    if (angle < 0.0) {
+        angle += 360.0;
+    }
+    return angle - 180.0;
+}
+
+// Sum of how far each limited joint is past its limits (0 if none is).
+double AssemblyObject::limitViolation(App::DocumentObject** worstJoint)
+{
+    double total = 0.0;
+    double worst = 0.0;
+    for (auto& check : limitChecks) {
+        double value = limitReading(check);
+        double over = 0.0;
+        if (check.minEnabled && value < check.min) {
+            over = check.min - value;
+        }
+        else if (check.maxEnabled && value > check.max) {
+            over = value - check.max;
+        }
+        total += over;
+        if (worstJoint && over > worst) {
+            worst = over;
+            *worstJoint = check.joint;
+        }
+    }
+    return total;
+}
+
+void AssemblyObject::warnViolatedLimits()
+{
+    for (auto& check : limitChecks) {
+        double value = limitReading(check);
+        bool under = check.minEnabled && value < check.min - 1e-4;
+        bool over = check.maxEnabled && value > check.max + 1e-4;
+        if (!under && !over) {
+            continue;
+        }
+        const char* unit = check.isAngle ? "deg" : "mm";
+        auto text = [unit](bool enabled, double limit, const char* none) {
+            if (!enabled) {
+                return std::string(none);
+            }
+            char buffer[64];
+            std::snprintf(buffer, sizeof(buffer), "%g %s", limit, unit);
+            return std::string(buffer);
+        };
+        Base::Console().warning(
+            "Assembly : %s is at %.4g %s, outside its limits (%s to %s).\n",
+            check.joint->getFullLabel(),
+            value,
+            unit,
+            text(check.minEnabled, check.min, "no min").c_str(),
+            text(check.maxEnabled, check.max, "no max").c_str()
+        );
     }
 }
 
@@ -392,6 +582,16 @@ bool AssemblyObject::validateNewPlacements()
             }
         }
     }
+
+    // [BW] Joint limits: refuse a step that takes a joint further past one.
+    // The solver holds the limits in the model but does not stop at them.
+    const double tolerance = 1e-4;
+    double violation = limitViolation();
+    if (violation > tolerance && violation > lastLimitViolation + tolerance) {
+        lastRejectWasLimit = true;
+        return false;
+    }
+    lastLimitViolation = violation;
 
     // TODO: We could do further tests
     // For example check if the joints connectors are correctly aligned.
@@ -1334,6 +1534,14 @@ std::shared_ptr<ASMTJoint> AssemblyObject::makeMbdJointDistance(App::DocumentObj
     }
 }
 
+// [BW] Where a joint's limits are measured from: the joint reading when the
+// limit datums line up (JointObject.py fills it in; 0 without datums).
+static double limitZero(App::DocumentObject* joint, const char* name)
+{
+    auto* prop = dynamic_cast<App::PropertyFloat*>(joint->getPropertyByName(name));
+    return prop ? prop->getValue() : 0.0;
+}
+
 std::vector<std::shared_ptr<MbD::ASMTJoint>> AssemblyObject::makeMbdJoint(App::DocumentObject* joint)
 {
     if (!joint) {
@@ -1394,13 +1602,26 @@ std::vector<std::shared_ptr<MbD::ASMTJoint>> AssemblyObject::makeMbdJoint(App::D
                     maxEnabled = pMaxEnabled->getValue();
                 }
 
+                double zero = limitZero(joint, "LimitLengthZero");
+                addLimitCheck(
+                    joint,
+                    fullMarkerNameI,
+                    fullMarkerNameJ,
+                    false,
+                    minEnabled,
+                    maxEnabled,
+                    minLength,
+                    maxLength,
+                    zero
+                );
+
                 if (minEnabled) {
                     auto limit = ASMTTranslationLimit::With();
                     limit->setName(joint->getFullName() + "-LimitLenMin");
                     limit->setMarkerI(fullMarkerNameI);
                     limit->setMarkerJ(fullMarkerNameJ);
                     limit->settype("=>");
-                    limit->setlimit(std::to_string(minLength));
+                    limit->setlimit(std::to_string(minLength + zero));
                     limit->settol("1.0e-9");
                     mbdAssembly->addLimit(limit);
                 }
@@ -1411,7 +1632,7 @@ std::vector<std::shared_ptr<MbD::ASMTJoint>> AssemblyObject::makeMbdJoint(App::D
                     limit2->setMarkerI(fullMarkerNameI);
                     limit2->setMarkerJ(fullMarkerNameJ);
                     limit2->settype("=<");
-                    limit2->setlimit(std::to_string(maxLength));
+                    limit2->setlimit(std::to_string(maxLength + zero));
                     limit2->settol("1.0e-9");
                     mbdAssembly->addLimit(limit2);
                 }
@@ -1445,13 +1666,26 @@ std::vector<std::shared_ptr<MbD::ASMTJoint>> AssemblyObject::makeMbdJoint(App::D
                     maxEnabled = pMaxEnabled->getValue();
                 }
 
+                double zero = limitZero(joint, "LimitAngleZero");
+                addLimitCheck(
+                    joint,
+                    fullMarkerNameI,
+                    fullMarkerNameJ,
+                    true,
+                    minEnabled,
+                    maxEnabled,
+                    minAngle,
+                    maxAngle,
+                    zero
+                );
+
                 if (minEnabled) {
                     auto limit = ASMTRotationLimit::With();
                     limit->setName(joint->getFullName() + "-LimitRotMin");
                     limit->setMarkerI(fullMarkerNameI);
                     limit->setMarkerJ(fullMarkerNameJ);
                     limit->settype("=>");
-                    limit->setlimit(std::to_string(minAngle) + "*pi/180.0");
+                    limit->setlimit(std::to_string(minAngle + zero) + "*pi/180.0");
                     limit->settol("1.0e-9");
                     mbdAssembly->addLimit(limit);
                 }
@@ -1462,7 +1696,7 @@ std::vector<std::shared_ptr<MbD::ASMTJoint>> AssemblyObject::makeMbdJoint(App::D
                     limit2->setMarkerI(fullMarkerNameI);
                     limit2->setMarkerJ(fullMarkerNameJ);
                     limit2->settype("=<");
-                    limit2->setlimit(std::to_string(maxAngle) + "*pi/180.0");
+                    limit2->setlimit(std::to_string(maxAngle + zero) + "*pi/180.0");
                     limit2->settol("1.0e-9");
                     mbdAssembly->addLimit(limit2);
                 }
@@ -1599,7 +1833,9 @@ std::string AssemblyObject::handleOneSideOfJoint(
     auto mbdMarker = makeMbdMarker(markerName, plc);
     mbdPart->addMarker(mbdMarker);
 
-    return "/OndselAssembly/" + mbdPart->name + "/" + markerName;
+    std::string fullMarkerName = "/OndselAssembly/" + mbdPart->name + "/" + markerName;
+    markerData[fullMarkerName] = {mbdPart, plc};  // [BW] for the limit checks
+    return fullMarkerName;
 }
 
 void AssemblyObject::getRackPinionMarkers(

@@ -121,6 +121,45 @@ PyObject* AssemblyObjectPy::undoSolve(PyObject* args) const
     Py_Return;
 }
 
+// [BW] Drag from Python, so drag behaviour (joint limits) can be tested headless.
+PyObject* AssemblyObjectPy::preDrag(PyObject* args) const
+{
+    PyObject* pyParts;
+    if (!PyArg_ParseTuple(args, "O", &pyParts)) {
+        return nullptr;
+    }
+    std::vector<App::DocumentObject*> parts;
+    Py::Sequence seq(pyParts);
+    for (Py::Sequence::iterator it = seq.begin(); it != seq.end(); ++it) {
+        PyObject* item = (*it).ptr();
+        if (!PyObject_TypeCheck(item, &(App::DocumentObjectPy::Type))) {
+            PyErr_SetString(PyExc_TypeError, "preDrag expects a list of document objects");
+            return nullptr;
+        }
+        parts.push_back(static_cast<App::DocumentObjectPy*>(item)->getDocumentObjectPtr());
+    }
+    this->getAssemblyObjectPtr()->preDrag(parts);
+    Py_Return;
+}
+
+PyObject* AssemblyObjectPy::doDragStep(PyObject* args) const
+{
+    if (!PyArg_ParseTuple(args, "")) {
+        return nullptr;
+    }
+    bool ok = this->getAssemblyObjectPtr()->doDragStep();
+    return Py_BuildValue("O", (ok ? Py_True : Py_False));
+}
+
+PyObject* AssemblyObjectPy::postDrag(PyObject* args) const
+{
+    if (!PyArg_ParseTuple(args, "")) {
+        return nullptr;
+    }
+    this->getAssemblyObjectPtr()->postDrag();
+    Py_Return;
+}
+
 PyObject* AssemblyObjectPy::clearUndo(PyObject* args) const
 {
     if (!PyArg_ParseTuple(args, "")) {

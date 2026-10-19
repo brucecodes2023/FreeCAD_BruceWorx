@@ -25,8 +25,10 @@ import TestApp
 
 from AssemblyTests.TestCore import TestCore
 from AssemblyTests.TestCommandInsertLink import TestCommandInsertLink
+from AssemblyTests.TestBWJoints import TestBWJoints
 
 
 # Use the modules so that code checkers don't complain (flake8)
 True if TestCore else False
 True if TestCommandInsertLink else False
+True if TestBWJoints else False

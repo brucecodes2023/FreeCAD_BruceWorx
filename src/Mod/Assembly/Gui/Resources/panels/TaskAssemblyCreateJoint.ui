@@ -349,7 +349,64 @@
         </property>
        </widget>
       </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="limitDatumLabel">
+        <property name="text">
+         <string>Measured from</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <layout class="QHBoxLayout" name="hLayoutLimitDatum">
+        <item>
+         <widget class="QPushButton" name="limitDatumButton">
+          <property name="toolTip">
+           <string>Pick a face, edge or datum on each part. The limits are measured from where they line up</string>
+          </property>
+          <property name="text">
+           <string>Pick datums</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QToolButton" name="limitDatumClearButton">
+          <property name="toolTip">
+           <string>Measure the limits from the joint's own axes again</string>
+          </property>
+          <property name="text">
+           <string>Clear</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="5" column="0" colspan="2">
+       <widget class="QLabel" name="limitDatumInfo">
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="text">
+         <string notr="true"></string>
+        </property>
+       </widget>
+      </item>
      </layout>
+    </widget>
+   </item>
+   <item row="13" column="0" colspan="2">
+    <widget class="QCheckBox" name="keepPositionCheckbox">
+     <property name="toolTip">
+      <string>Make the joint where the parts are now. When off, one part moves so the picked elements line up</string>
+     </property>
+     <property name="text">
+      <string>Keep parts where they are</string>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
     </widget>
    </item>
    <item row="12" column="0">

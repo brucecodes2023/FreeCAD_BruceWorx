@@ -97,7 +97,7 @@ public:
     int updateForFrame(size_t index, bool updateJCS = true);
     size_t numberOfFrames();
     void preDrag(std::vector<App::DocumentObject*> dragParts);
-    void doDragStep();
+    bool doDragStep();
     void postDrag();
     void savePlacementsForUndo();
     void undoSolve();
@@ -266,6 +266,49 @@ private:
     std::vector<App::DocumentObject*> motions;
 
     std::vector<std::pair<App::DocumentObject*, Base::Placement>> previousPositions;
+
+    // [BW] Joint limits, checked by us after each drag step: the solver keeps
+    // them in the model but does not stop a part at them.
+    struct MarkerData
+    {
+        std::shared_ptr<MbD::ASMTPart> part;
+        Base::Placement plc;  // marker relative to its MbD part
+    };
+    struct LimitCheck
+    {
+        App::DocumentObject* joint;
+        MarkerData markerI;
+        MarkerData markerJ;
+        bool isAngle;  // else length along the joint's z axis
+        bool minEnabled;
+        bool maxEnabled;
+        double min;   // degrees or mm, measured from the datum zero
+        double max;
+        double zero;  // joint reading (JCS to JCS) when the datums line up
+    };
+    std::unordered_map<std::string, MarkerData> markerData;
+    std::vector<LimitCheck> limitChecks;
+    std::vector<std::pair<App::DocumentObject*, Base::Placement>> lastGoodPlacements;
+    double lastLimitViolation = 0.0;
+    bool lastRejectWasLimit = false;
+
+    void addLimitCheck(
+        App::DocumentObject* joint,
+        const std::string& markerI,
+        const std::string& markerJ,
+        bool isAngle,
+        bool minEnabled,
+        bool maxEnabled,
+        double min,
+        double max,
+        double zero
+    );
+    double limitReading(const LimitCheck& check);
+    double limitViolation(App::DocumentObject** worstJoint = nullptr);
+    void warnViolatedLimits();
+    bool runDragStepTo(const std::vector<Base::Placement>& dragPlacements);
+    void saveLastGoodPlacements();
+    void restoreLastGoodPlacements(bool properties);
 
     bool bundleFixed;
 

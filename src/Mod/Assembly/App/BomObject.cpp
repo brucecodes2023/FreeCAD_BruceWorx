@@ -287,15 +287,21 @@ std::string BomObject::getBomPropertyValue(App::DocumentObject* obj, const std::
         return QObject::tr("N/A").toStdString();
     }
 
+    // [BW] Text goes in with a leading quote, as Index does above, so the
+    // spreadsheet keeps it as typed: revision "01" stays "01", not 1.
+    auto asText = [](const std::string& value) {
+        return value.empty() ? value : "'" + value;
+    };
+
     // Only support a subset of property types for BOM
     if (auto propStr = freecad_cast<App::PropertyString*>(prop)) {
-        return propStr->getValue();
+        return asText(propStr->getValue());
     }
     else if (auto propQuantity = freecad_cast<App::PropertyQuantity*>(prop)) {
         return propQuantity->getQuantityValue().getUserString();
     }
     else if (auto propEnum = freecad_cast<App::PropertyEnumeration*>(prop)) {
-        return propEnum->getValueAsString();
+        return asText(propEnum->getValueAsString());
     }
     else if (auto propFloat = freecad_cast<App::PropertyFloat*>(prop)) {
         return std::to_string(propFloat->getValue());

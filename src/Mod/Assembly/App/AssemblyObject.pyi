@@ -86,6 +86,37 @@ class AssemblyObject(Part):
         ...
 
     @constmethod
+    def preDrag(self, parts: list, /) -> None:
+        """[BW] Start dragging parts, as the 3D view does when you grab one.
+
+        preDrag(parts)
+
+        Solves, then remembers which of `parts` the drag moves.
+        Move them by setting their Placement and call doDragStep().
+        Returns: None"""
+        ...
+
+    @constmethod
+    def doDragStep(self) -> bool:
+        """[BW] Solve one drag step from the dragged parts' current Placement.
+
+        doDragStep() -> bool
+
+        Returns: False if the step was refused (the solve failed, a grounded
+        part moved, or a joint limit would be passed) and parts kept their
+        last placements."""
+        ...
+
+    @constmethod
+    def postDrag(self) -> None:
+        """[BW] Finish a drag started with preDrag().
+
+        postDrag()
+
+        Returns: None"""
+        ...
+
+    @constmethod
     def ensureIdentityPlacements(self) -> Any:
         """Makes sure that LinkGroups or sub-assemblies have identity placements.
 

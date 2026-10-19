@@ -143,6 +143,91 @@ JointParallelForbidden = [
 ]
 
 
+def wrapAngle(degrees):
+    """Angle in degrees brought into -180 to 180."""
+    return (degrees + 180.0) % 360.0 - 180.0
+
+
+def limitDatumPlacement(datum):
+    """[BW] Global placement of a limit datum: z is the face normal, the edge
+    direction or the datum's own z; the origin is a point on it."""
+    plc = UtilsAssembly.findPlacement(datum, ignoreVertex=True)
+    return UtilsAssembly.getJcsGlobalPlc(plc, datum)
+
+
+def limitZeros(joint):
+    """[BW] (angle, length) the joint reads when its limit datums line up.
+
+    In each connector's own frame, a datum sits at an angle (its direction
+    projected onto the connector's xy plane) and a height (along z). With
+    connector 2 turned by the joint angle about connector 1's z, the datums
+    line up when the joint reads angle1 - angle2, and are level when it
+    reads height1 - height2. A missing datum counts as the connector's x
+    axis and origin. Returns (0, 0) without datums or connectors.
+
+    An angle datum needs a direction across the axis: a face the axis runs
+    along (a door's face for its hinge) or an edge square to the axis. A
+    face square to the axis turns in its own plane and gives no angle; such
+    datums are listed by limitDatumProblems() and count as the x axis."""
+    datums = (getattr(joint, "LimitDatum1", None), getattr(joint, "LimitDatum2", None))
+    refs = (joint.Reference1, joint.Reference2)
+    if not any(UtilsAssembly.isRefValid(d, 1) for d in datums):
+        return 0.0, 0.0
+    if not all(UtilsAssembly.isRefValid(r, 2) for r in refs):
+        return 0.0, 0.0
+    connectors = (
+        UtilsAssembly.getJcsGlobalPlc(joint.Placement1, joint.Reference1),
+        UtilsAssembly.getJcsGlobalPlc(joint.Placement2, joint.Reference2),
+    )
+    angles, heights = [], []
+    for connector, datum in zip(connectors, datums):
+        if not UtilsAssembly.isRefValid(datum, 1):
+            angles.append(0.0)
+            heights.append(0.0)
+            continue
+        if len(datum[1]) < 2:
+            datum = [datum[0], [datum[1][0], datum[1][0]]]
+        local = connector.inverse() * limitDatumPlacement(datum)
+        z = local.Rotation.multVec(App.Vector(0, 0, 1))
+        if math.hypot(z.x, z.y) < 1e-6:
+            # Along the joint axis: no direction to measure an angle from.
+            angles.append(0.0)
+        else:
+            angles.append(math.degrees(math.atan2(z.y, z.x)))
+        heights.append(local.Base.z)
+    return wrapAngle(angles[0] - angles[1]), heights[0] - heights[1]
+
+
+def limitDatumProblems(joint):
+    """[BW] Labels of angle datums that lie square to the joint axis."""
+    if joint.JointType not in JointUsingLimitAngle:
+        return []
+    problems = []
+    for index in (1, 2):
+        datum = getattr(joint, f"LimitDatum{index}", None)
+        ref = getattr(joint, f"Reference{index}")
+        if not UtilsAssembly.isRefValid(datum, 1) or not UtilsAssembly.isRefValid(ref, 2):
+            continue
+        if len(datum[1]) < 2:
+            datum = [datum[0], [datum[1][0], datum[1][0]]]
+        connector = UtilsAssembly.getJcsGlobalPlc(getattr(joint, f"Placement{index}"), ref)
+        z = (connector.inverse() * limitDatumPlacement(datum)).Rotation.multVec(App.Vector(0, 0, 1))
+        if math.hypot(z.x, z.y) < 1e-6:
+            problems.append(f"LimitDatum{index}")
+    return problems
+
+
+def limitReading(joint):
+    """[BW] (angle, length) of the joint now, measured from the limit datums."""
+    angle = math.degrees(UtilsAssembly.getJointXYAngle(joint))
+    plc1 = UtilsAssembly.getJcsGlobalPlc(joint.Placement1, joint.Reference1)
+    plc2 = UtilsAssembly.getJcsGlobalPlc(joint.Placement2, joint.Reference2)
+    length = (plc1.inverse() * plc2).Base.z
+    zeroAngle = joint.LimitAngleZero.Value if hasattr(joint, "LimitAngleZero") else 0.0
+    zeroLength = joint.LimitLengthZero.Value if hasattr(joint, "LimitLengthZero") else 0.0
+    return wrapAngle(angle - zeroAngle), length - zeroLength
+
+
 def solveIfAllowed(assembly, storePrev=False):
     if assembly.Type == "Assembly" and Preferences.preferences().GetBool(
         "SolveInJointCreation", True
@@ -361,6 +446,64 @@ class Joint:
         joint.setPropertyStatus("Distance2", "AllowNegativeValues")
         joint.setPropertyStatus("LengthMin", "AllowNegativeValues")
         joint.setPropertyStatus("LengthMax", "AllowNegativeValues")
+
+        self.addBruceWorxProperties(joint)
+
+    def addBruceWorxProperties(self, joint):
+        # [BW] Limits measured from datums, and joints made where the parts are.
+        for index, order in ((1, "first"), (2, "second")):
+            name = f"LimitDatum{index}"
+            if not hasattr(joint, name):
+                joint.addProperty(
+                    "App::PropertyXLinkSub",
+                    name,
+                    "Limits",
+                    QT_TRANSLATE_NOOP(
+                        "App::Property",
+                        f"A face, edge or datum on the {order} part that the limits are measured from. "
+                        "Empty: the joint's own axes",
+                    ),
+                    locked=True,
+                )
+
+        if not hasattr(joint, "LimitAngleZero"):
+            joint.addProperty(
+                "App::PropertyAngle",
+                "LimitAngleZero",
+                "Limits",
+                QT_TRANSLATE_NOOP(
+                    "App::Property",
+                    "What the joint's own angle reads when the limit datums line up. Set from the datums",
+                ),
+                locked=True,
+            )
+
+        if not hasattr(joint, "LimitLengthZero"):
+            joint.addProperty(
+                "App::PropertyDistance",
+                "LimitLengthZero",
+                "Limits",
+                QT_TRANSLATE_NOOP(
+                    "App::Property",
+                    "What the joint's own length reads when the limit datums line up. Set from the datums",
+                ),
+                locked=True,
+            )
+
+        joint.setEditorMode("LimitAngleZero", ["ReadOnly"])
+        joint.setEditorMode("LimitLengthZero", ["ReadOnly"])
+
+        if not hasattr(joint, "KeepPosition"):
+            joint.addProperty(
+                "App::PropertyBool",
+                "KeepPosition",
+                "Joint",
+                QT_TRANSLATE_NOOP(
+                    "App::Property",
+                    "Make the joint where the parts are, instead of moving one so the picked elements line up",
+                ),
+                locked=True,
+            )
 
     def addReference1Property(self, joint):
         joint.addProperty(
@@ -808,6 +951,9 @@ class Joint:
         if prop == "Distance" and joint.JointType == "Distance":
             solveIfAllowed(self.getAssembly(joint))
 
+        if prop == "LimitDatum1" or prop == "LimitDatum2":
+            self.updateLimitZeros(joint)
+
         if prop == "Angle" and joint.JointType == "Angle":
             if joint.Angle != 0.0:
                 self.preventParallel(joint)
@@ -851,7 +997,9 @@ class Joint:
         if len(refs) >= 2:
             joint.Reference2 = refs[1]
             joint.Placement2 = self.findPlacement(joint, joint.Reference2, 1)
-            if joint.JointType in JointUsingPreSolve:
+            if joint.JointType in JointUsingPreSolve and getattr(joint, "KeepPosition", False):
+                self.keepPosition(joint)
+            elif joint.JointType in JointUsingPreSolve:
                 self.preSolve(joint)
             elif joint.JointType in JointParallelForbidden:
                 self.preventParallel(joint)
@@ -875,7 +1023,37 @@ class Joint:
         if not joint.Detach2:
             joint.Placement2 = self.findPlacement(joint, joint.Reference2, 1)
 
+        self.updateLimitZeros(joint)
         self.redrawJointPlacements(joint)
+
+    def keepPosition(self, joint):
+        """[BW] Fit the joint to where the parts are now, so neither moves:
+        Offset2 takes up the difference between the two connectors."""
+        plc1 = UtilsAssembly.getJcsGlobalPlc(joint.Placement1, joint.Reference1)
+        plc2 = UtilsAssembly.getJcsGlobalPlc(joint.Placement2, joint.Reference2)
+        joint.Offset2 = joint.Offset2 * plc2.inverse() * plc1
+
+    def updateLimitZeros(self, joint):
+        """[BW] Measure the limits from the limit datums.
+
+        LimitAngleZero and LimitLengthZero are what the joint itself reads
+        (connector 1 to connector 2) when the datums line up. The solver and
+        the drag check subtract them, so limits of 0 to 90 deg mean 0 to 90
+        from the datums. Each zero depends only on where the datum sits on
+        its own part, not on how the parts are posed. Without datums both
+        are 0 and the limits are measured from the joint's own axes."""
+        if not hasattr(joint, "LimitAngleZero"):
+            return
+        angle, length = limitZeros(joint)
+        for name in limitDatumProblems(joint):
+            App.Console.PrintWarning(
+                f"{joint.Label}: {name} is square to the joint axis, so it gives no angle. "
+                "Pick a face the axis runs along, or an edge square to the axis.\n"
+            )
+        if abs(joint.LimitAngleZero.Value - angle) > 1e-9:
+            joint.LimitAngleZero = angle
+        if abs(joint.LimitLengthZero.Value - length) > 1e-9:
+            joint.LimitLengthZero = length
 
     def redrawJointPlacements(self, joint):
         if joint.ViewObject:
@@ -1577,6 +1755,13 @@ class TaskAssemblyCreateJoint(QtCore.QObject):
         self.jForm.limitCheckbox3.stateChanged.connect(self.adaptUi)
         self.jForm.limitCheckbox4.stateChanged.connect(self.adaptUi)
 
+        # [BW] Keep parts in place, and limits measured from datums.
+        self.pickingDatums = False
+        self.jForm.keepPositionCheckbox.setChecked(getattr(self.joint, "KeepPosition", False))
+        self.jForm.keepPositionCheckbox.stateChanged.connect(self.onKeepPositionToggled)
+        self.jForm.limitDatumButton.toggled.connect(self.onPickDatumsToggled)
+        self.jForm.limitDatumClearButton.clicked.connect(self.onClearDatumsClicked)
+
         self.jForm.limitLenMinSpinbox.valueChanged.connect(self.onLimitLenMinChanged)
         self.jForm.limitLenMaxSpinbox.valueChanged.connect(self.onLimitLenMaxChanged)
         self.jForm.limitRotMinSpinbox.valueChanged.connect(self.onLimitRotMinChanged)
@@ -1778,6 +1963,83 @@ class TaskAssemblyCreateJoint(QtCore.QObject):
     def onReverseClicked(self):
         self.joint.Proxy.flipOnePart(self.joint)
 
+    def onKeepPositionToggled(self, state):
+        # [BW] Redo the joint from the parts' original places, then either
+        # fit it where they are or move one part to line the picks up.
+        self.joint.KeepPosition = self.jForm.keepPositionCheckbox.isChecked()
+        if len(self.refs) != 2:
+            return
+        refs = list(self.refs)
+        self.joint.Proxy.setJointConnectors(self.joint, [])
+        self.joint.Offset2 = App.Placement()
+        self.refs = refs
+        self.updateJoint()
+        self.updateOffsetWidgets()
+        self.updateLimitDatumInfo()
+
+    def onPickDatumsToggled(self, on):
+        self.pickingDatums = on
+        if on:
+            self.jForm.limitDatumInfo.setText(
+                translate("Assembly", "Pick a face, edge or datum on each of the two parts.")
+            )
+        else:
+            self.updateLimitDatumInfo()
+
+    def onClearDatumsClicked(self):
+        self.jForm.limitDatumButton.setChecked(False)
+        self.joint.LimitDatum1 = None
+        self.joint.LimitDatum2 = None
+        self.updateLimitDatumInfo()
+
+    def addLimitDatum(self, ref):
+        """[BW] A pick while 'Pick datums' is down: a datum for the part it is on."""
+        part = self.getMovingPart(ref)
+        sides = [i for i, r in enumerate(self.refs) if self.getMovingPart(r) == part]
+        if len(self.refs) != 2 or not sides:
+            App.Console.PrintWarning(
+                translate("Assembly", "Pick the datum on one of the two parts of the joint") + "\n"
+            )
+            return
+        ref = [ref[0], [ref[1][0], ref[1][0]]]
+        setattr(self.joint, f"LimitDatum{sides[0] + 1}", ref)
+        if UtilsAssembly.isRefValid(self.joint.LimitDatum1, 1) and UtilsAssembly.isRefValid(
+            self.joint.LimitDatum2, 1
+        ):
+            self.jForm.limitDatumButton.setChecked(False)
+        self.updateLimitDatumInfo()
+
+    def updateLimitDatumInfo(self):
+        def name(ref):
+            if not UtilsAssembly.isRefValid(ref, 1):
+                return translate("Assembly", "joint axes")
+            obj = UtilsAssembly.getObject(ref)
+            element = UtilsAssembly.getElementName(ref[1][0])
+            label = obj.Label if obj else ref[0].Label
+            return label + ("." + element if element else "")
+
+        if not hasattr(self.joint, "LimitDatum1"):
+            return
+        datum1, datum2 = self.joint.LimitDatum1, self.joint.LimitDatum2
+        if not (UtilsAssembly.isRefValid(datum1, 1) or UtilsAssembly.isRefValid(datum2, 1)):
+            self.jForm.limitDatumInfo.setText(translate("Assembly", "The joint's own axes"))
+            return
+        text = name(datum1) + "  /  " + name(datum2)
+        if limitDatumProblems(self.joint):
+            text += "\n" + translate(
+                "Assembly",
+                "A datum is square to the axis and gives no angle. Pick a face the axis runs along, "
+                "or an edge square to the axis.",
+            )
+        elif len(self.refs) == 2:
+            angle, length = limitReading(self.joint)
+            if self.jType in JointUsingLimitAngle:
+                text += "\n" + translate("Assembly", "Now at") + f" {angle:.1f}°"
+            if self.jType in JointUsingLimitLength:
+                text += ("" if self.jType in JointUsingLimitAngle else "\n" + translate("Assembly", "Now at"))
+                text += f" {length:.2f} mm"
+        self.jForm.limitDatumInfo.setText(text)
+
     def reverseRotToggled(self, val):
         if val:
             self.jForm.jointType.setCurrentIndex(JointTypes.index("Gears"))
@@ -1836,6 +2098,9 @@ class TaskAssemblyCreateJoint(QtCore.QObject):
         self.jForm.rotationSpinbox.setVisible(not advancedOffset and needRotation)
 
         self.jForm.PushButtonReverse.setVisible(jType in JointUsingReverse)
+        self.jForm.keepPositionCheckbox.setVisible(
+            self.activeType == "Assembly" and jType in JointUsingPreSolve
+        )
 
         needLengthLimits = jType in JointUsingLimitLength
         needAngleLimits = jType in JointUsingLimitAngle
@@ -1869,6 +2134,8 @@ class TaskAssemblyCreateJoint(QtCore.QObject):
                 self.jForm.limitRotMaxSpinbox.setEnabled(self.joint.EnableAngleMax)
                 self.onLimitRotMinChanged(0)
                 self.onLimitRotMaxChanged(0)
+
+            self.updateLimitDatumInfo()
 
         self.updateOffsetWidgets()
 
@@ -1974,6 +2241,7 @@ class TaskAssemblyCreateJoint(QtCore.QObject):
         self.joint.Proxy.setJointConnectors(self.joint, self.refs)
 
         self.updateIsolation()
+        self.updateLimitDatumInfo()
 
     def updateJointList(self):
         self.jForm.featureList.clear()
@@ -2146,6 +2414,13 @@ class TaskAssemblyCreateJoint(QtCore.QObject):
 
         # Construct the reference using the Component as the root
         ref = [comp, [new_sub]]
+
+        if self.pickingDatums:
+            # [BW] Picked as a limit datum, not as a joint element.
+            self.addLimitDatum(ref)
+            self.addition_rejected = True
+            Gui.Selection.removeSelection(doc_name, obj_name, sub_name)
+            return
 
         moving_part = self.getMovingPart(ref)
 
