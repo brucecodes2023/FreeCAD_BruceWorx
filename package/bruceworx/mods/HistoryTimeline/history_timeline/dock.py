@@ -127,13 +127,10 @@ class HistoryTimelineDock(QtWidgets.QDockWidget):
         self._bar.editRequested.connect(self._edit)
         self._bar.contextMenuRequested.connect(self._popup)
         self.setWidget(self._bar)
-        # Title bar plus the ribbon. A restored window state cannot stretch
-        # this dock back to the old tall size.
-        title = self.style().pixelMetric(
-            qt_enum(QtWidgets.QStyle, ("PixelMetric", "PM_TitleBarHeight"), ("PM_TitleBarHeight",))
-        )
-        if title <= 0:
-            title = 22
+        # One row, no dock title: the bar is the only header (roadmap §13.3).
+        # The menu item and the preference still show and hide it. A restored
+        # window state cannot stretch the dock back to the old tall size.
+        self.setTitleBarWidget(QtWidgets.QWidget(self))
         frame = self.style().pixelMetric(
             qt_enum(
                 QtWidgets.QStyle,
@@ -141,7 +138,7 @@ class HistoryTimelineDock(QtWidgets.QDockWidget):
                 ("PM_DockWidgetFrameWidth",),
             )
         )
-        dock_height = RIBBON_HEIGHT + title + max(frame, 0) * 2
+        dock_height = RIBBON_HEIGHT + max(frame, 0) * 2
         self.setMinimumHeight(dock_height)
         self.setMaximumHeight(dock_height)
         self._refresh_timer = QtCore.QTimer(self)
@@ -159,19 +156,14 @@ class HistoryTimelineDock(QtWidgets.QDockWidget):
             return
         body, source = active_body()
         if body is None:
-            self._bar.set_timeline(
-                None,
-                [],
-                "No PartDesign body. Create one, or activate a body, to see its history.",
-            )
+            self._bar.set_timeline(None, [], "No feature history in this document.")
             return
         timeline = model.read_timeline(body)
         for entry in timeline.entries:
             entry.icon = _view_icon(entry.obj)
+        label = timeline.body_label
         if source == "first":
-            label = f"{timeline.body_label}  (first body — none active)"
-        else:
-            label = timeline.body_label
+            label += " (not active)"
         self._bar.set_timeline(label, timeline.entries)
 
     def _feature(self, name):

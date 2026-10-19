@@ -98,6 +98,125 @@
         </property>
        </widget>
       </item>
+      <item>
+       <widget class="Gui::PrefCheckBox" name="UseBruceWorxBar">
+        <property name="toolTip">
+         <string>On by default. Add-ons that replace the toolbar area (FreeCAD-Ribbon) are not loaded while this is on; they stay installed, and stock FreeCAD still loads them. Takes effect on the next start.</string>
+        </property>
+        <property name="text">
+         <string>BruceWorx top bar (turns the FreeCAD-Ribbon add-on off)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>UseBruceWorxBar</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>BruceWorx</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Gui::PrefCheckBox" name="CompactToolbars">
+        <property name="toolTip">
+         <string>On by default. After each workbench switch, File, the workbench tabs and View share the first toolbar row and the workbench's tools follow on the second.</string>
+        </property>
+        <property name="text">
+         <string>Two toolbar rows</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>CompactToolbars</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>BruceWorx</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Gui::PrefCheckBox" name="FollowSystemAppearance">
+        <property name="toolTip">
+         <string>On by default. Switches between the BruceWorx and BruceWorx Dark values (theme, viewport, view cube, edges) when macOS changes appearance. Uncheck to keep the theme picked on Preferences &gt; General.</string>
+        </property>
+        <property name="text">
+         <string>Follow the macOS light/dark setting</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>FollowSystemAppearance</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>BruceWorx</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Gui::PrefCheckBox" name="FollowSystemAccent">
+        <property name="toolTip">
+         <string>On by default. The accent from System Settings &gt; Appearance colours buttons, checkboxes, selection and the view cube highlight. Text on it turns dark when white would be hard to read.</string>
+        </property>
+        <property name="text">
+         <string>Use the macOS accent colour</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>FollowSystemAccent</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>BruceWorx</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="layoutSketchGrid">
+        <item>
+         <widget class="QLabel" name="labelSketchGridStrength">
+          <property name="text">
+           <string>Sketch grid strength</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="Gui::PrefSpinBox" name="SketchGridStrength">
+          <property name="toolTip">
+           <string>How visible the sketch grid is: white lines on dark, black on light, at this opacity. Open sketches update at once. Python: bruceworx_grid.set_strength(14)</string>
+          </property>
+          <property name="suffix">
+           <string> %</string>
+          </property>
+          <property name="minimum">
+           <number>2</number>
+          </property>
+          <property name="maximum">
+           <number>40</number>
+          </property>
+          <property name="value">
+           <number>10</number>
+          </property>
+          <property name="prefEntry" stdset="0">
+           <cstring>SketchGridStrength</cstring>
+          </property>
+          <property name="prefPath" stdset="0">
+           <cstring>BruceWorx</cstring>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="spacerSketchGrid">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
      </layout>
     </widget>
    </item>
@@ -175,6 +294,25 @@
        </widget>
       </item>
       <item>
+       <widget class="Gui::PrefCheckBox" name="FloatingTaskPanel">
+        <property name="toolTip">
+         <string>On by default. While the model tree floats, the task panel floats on the right as a card that shows while a command is open. Uncheck to dock it again.</string>
+        </property>
+        <property name="text">
+         <string>Float the task panel (command dialog)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>FloatingTaskPanel</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>BruceWorx</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="Gui::PrefCheckBox" name="FloatingModelTreeAutoHide">
         <property name="toolTip">
          <string>OverlayLeft AutoHide. The panel hides when the pointer leaves and shows on hover.</string>
@@ -196,7 +334,7 @@
       <item>
        <widget class="Gui::PrefCheckBox" name="FloatingModelTreeTransparent">
         <property name="toolTip">
-         <string>OverlayLeft Transparent, plus the BruceWorx model-tree stylesheet (semi-transparent background).</string>
+         <string>On by default. OverlayLeft Transparent: the model shows through the Browser; the text keeps a halo so it stays readable. Uncheck for an opaque card.</string>
         </property>
         <property name="text">
          <string>Transparent background</string>
@@ -332,7 +470,7 @@
            <number>2000</number>
           </property>
           <property name="value">
-           <number>0</number>
+           <number>8</number>
           </property>
           <property name="prefEntry" stdset="0">
            <cstring>FloatingModelTreeLeftInset</cstring>

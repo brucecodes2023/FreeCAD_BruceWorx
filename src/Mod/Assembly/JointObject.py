@@ -1793,6 +1793,7 @@ class TaskAssemblyCreateJoint(QtCore.QObject):
         self.jForm.featureList.installEventFilter(self)
 
         self.createDeleteAction()
+        self.createDatumRemoveAction()
 
         self.addition_rejected = False
 
@@ -1986,6 +1987,20 @@ class TaskAssemblyCreateJoint(QtCore.QObject):
         else:
             self.updateLimitDatumInfo()
 
+    def createDatumRemoveAction(self):
+        """[BW] Delete or right-click > Remove on the datum list clears that side's datum."""
+        action = QtGui.QAction(translate("Assembly", "Remove datum"), self.jForm.limitDatumList)
+        action.setShortcut(QtGui.QKeySequence(QtCore.Qt.Key_Delete))
+        action.setShortcutContext(QtCore.Qt.WidgetShortcut)
+        action.triggered.connect(self.removeSelectedDatums)
+        self.jForm.limitDatumList.addAction(action)
+        self.jForm.limitDatumList.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
+
+    def removeSelectedDatums(self):
+        for index in self.jForm.limitDatumList.selectedIndexes():
+            setattr(self.joint, f"LimitDatum{index.row() + 1}", None)
+        self.updateLimitDatumInfo()
+
     def onClearDatumsClicked(self):
         self.jForm.limitDatumButton.setChecked(False)
         self.joint.LimitDatum1 = None
@@ -2010,21 +2025,15 @@ class TaskAssemblyCreateJoint(QtCore.QObject):
         self.updateLimitDatumInfo()
 
     def updateLimitDatumInfo(self):
-        def name(ref):
-            if not UtilsAssembly.isRefValid(ref, 1):
-                return translate("Assembly", "joint axes")
-            obj = UtilsAssembly.getObject(ref)
-            element = UtilsAssembly.getElementName(ref[1][0])
-            label = obj.Label if obj else ref[0].Label
-            return label + ("." + element if element else "")
-
+        """[BW] One row per part in the datum list; the reading below it."""
         if not hasattr(self.joint, "LimitDatum1"):
             return
         datum1, datum2 = self.joint.LimitDatum1, self.joint.LimitDatum2
+        self.fillLimitDatumList((datum1, datum2))
         if not (UtilsAssembly.isRefValid(datum1, 1) or UtilsAssembly.isRefValid(datum2, 1)):
-            self.jForm.limitDatumInfo.setText(translate("Assembly", "The joint's own axes"))
+            self.jForm.limitDatumInfo.setText(translate("Assembly", "Measured from the joint's own axes"))
             return
-        text = name(datum1) + "  /  " + name(datum2)
+        text = ""
         if limitDatumProblems(self.joint):
             text += "\n" + translate(
                 "Assembly",
@@ -2038,7 +2047,28 @@ class TaskAssemblyCreateJoint(QtCore.QObject):
             if self.jType in JointUsingLimitLength:
                 text += ("" if self.jType in JointUsingLimitAngle else "\n" + translate("Assembly", "Now at"))
                 text += f" {length:.2f} mm"
-        self.jForm.limitDatumInfo.setText(text)
+        self.jForm.limitDatumInfo.setText(text.strip())
+
+    def fillLimitDatumList(self, datums):
+        """Rows "Part · Element" with the object's icon; a side without a datum reads
+        "Part · joint axis" and cannot be selected."""
+        view = self.jForm.limitDatumList
+        view.clear()
+        view.setIconSize(QtCore.QSize(16, 16))
+        for side, ref in enumerate(datums):
+            if UtilsAssembly.isRefValid(ref, 1):
+                obj = UtilsAssembly.getObject(ref) or ref[0]
+                element = UtilsAssembly.getElementName(ref[1][0])
+                item = QtWidgets.QListWidgetItem(obj.Label + (" · " + element if element else ""))
+                if getattr(obj, "ViewObject", None) is not None:
+                    item.setIcon(obj.ViewObject.Icon)
+            else:
+                part = self.getMovingPart(self.refs[side]) if side < len(self.refs) else None
+                label = (part.Label + " · ") if part is not None else ""
+                item = QtWidgets.QListWidgetItem(label + translate("Assembly", "joint axis"))
+                item.setFlags(item.flags() & ~QtCore.Qt.ItemIsSelectable)
+                item.setForeground(view.palette().brush(QtGui.QPalette.PlaceholderText))
+            view.addItem(item)
 
     def reverseRotToggled(self, val):
         if val:

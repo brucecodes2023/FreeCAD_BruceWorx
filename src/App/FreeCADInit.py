@@ -108,6 +108,17 @@ def InitApplications():
     SystemWideMacroDir = FreeCAD.getHomePath()+'Macro'
     SystemWideMacroDir = os.path.realpath(SystemWideMacroDir)
     DisabledAddons = FreeCAD.ConfigGet("DisabledAddons").split(";")
+    # [BW] BruceWorx draws its own top bar, so add-ons that take over the toolbar
+    # area (FreeCAD-Ribbon) are skipped while Preferences/BruceWorx/UseBruceWorxBar
+    # is on. They stay installed: unticking the preference brings them back, and
+    # stock FreeCAD on the same profile still loads them. FreeCADGuiInit reads the
+    # same list from the config.
+    BruceWorxPrefs = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/BruceWorx")
+    if BruceWorxPrefs.GetBool("UseBruceWorxBar", True):
+        Replaced = BruceWorxPrefs.GetString("ReplacedAddons", "FreeCAD-Ribbon")
+        DisabledAddons += [Name for Name in Replaced.split(";") if Name and Name not in DisabledAddons]
+        FreeCAD.ConfigSet("DisabledAddons", ";".join(Name for Name in DisabledAddons if Name))
+        FreeCAD.ConfigSet("BruceWorxReplacedAddons", Replaced)
 
     #print FreeCAD.getHomePath()
     if os.path.isdir(FreeCAD.getHomePath()+'src\\Tools'):
@@ -256,7 +267,11 @@ def InitApplications():
         Name = os.path.basename(Dir)
 
         if Name in DisabledAddons:
-            Msg(f'NOTICE: Addon "{Name}" disabled by presence of "--disable-addon {Name}" argument\n')
+            if Name in FreeCAD.ConfigGet("BruceWorxReplacedAddons").split(";"):
+                Msg(f'NOTICE: Addon "{Name}" not loaded: replaced by the BruceWorx top bar '
+                    '(Preferences > BruceWorx)\n')
+            else:
+                Msg(f'NOTICE: Addon "{Name}" disabled by presence of "--disable-addon {Name}" argument\n')
             return True
 
         stopFileName = "ALL_ADDONS_DISABLED"

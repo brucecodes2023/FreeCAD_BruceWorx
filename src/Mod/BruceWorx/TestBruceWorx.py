@@ -213,6 +213,7 @@ class SyncTests(unittest.TestCase):
     def test_absent_right_widgets_stay_absent(self):
         prefs, overlay, style, _docks = _world()
         prefs.SetBool("FloatingModelTree", True)
+        prefs.SetBool("FloatingTaskPanel", False)
         BruceWorx.sync(prefs, overlay, style, QSS, ["Tree view"])
         right = overlay.GetGroup("OverlayRight")
         self.assertNotIn("Widgets", right.strings)
@@ -221,6 +222,34 @@ class SyncTests(unittest.TestCase):
         BruceWorx.sync(prefs, overlay, style, QSS, ["Tree view"])
         self.assertNotIn("Widgets", right.strings)
         self.assertNotIn("Widgets", overlay.GetGroup("OverlayLeft").strings)
+
+    def test_task_panel_floats_right_and_comes_back(self):
+        prefs, overlay, style, _docks = _world()
+        left = overlay.GetGroup("OverlayLeft")
+        right = overlay.GetGroup("OverlayRight")
+        left.SetString("Widgets", "Tasks,")
+        prefs.SetBool("FloatingModelTree", True)
+        BruceWorx.sync(prefs, overlay, style, QSS, ["Model"])
+        self.assertEqual(right.GetString("Widgets"), "Tasks,")
+        self.assertEqual(left.GetString("Widgets"), "Model,")
+        self.assertEqual(right.GetInt("Width"), BruceWorx.TASK_WIDTH)
+        self.assertTrue(right.GetBool("TaskShow"))
+        self.assertFalse(right.GetBool("Transparent"))
+
+        # Its own switch docks it again without touching the tree.
+        prefs.SetBool("FloatingTaskPanel", False)
+        BruceWorx.sync(prefs, overlay, style, QSS, ["Model"])
+        self.assertEqual(right.GetString("Widgets"), "")
+        self.assertEqual(left.GetString("Widgets"), "Model,")
+
+        # Turning the floating panels off restores the snapshot.
+        prefs.SetBool("FloatingTaskPanel", True)
+        BruceWorx.sync(prefs, overlay, style, QSS, ["Model"])
+        prefs.SetBool("FloatingModelTree", False)
+        BruceWorx.sync(prefs, overlay, style, QSS, ["Model"])
+        self.assertEqual(left.GetString("Widgets"), "Tasks,")
+        self.assertNotIn("Widgets", right.strings)
+        self.assertNotIn("Width", right.ints)
 
     def test_snapshot_is_json(self):
         prefs, overlay, style, _docks = _world()

@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 # [BW] Python-only: preference page, overlay model tree, preference-pack
 # helper (applied on first start), shared BruceWorx menu, ground grid and
-# Rectangular/Circular Pattern commands. No workbench, no C++.
+# Rectangular/Circular Pattern commands and the two-row toolbar layout.
+# No workbench, no C++.
 
 SET(BruceWorx_SRCS
     Init.py
@@ -17,6 +18,9 @@ SET(BruceWorx_SRCS
     ground_grid.py
     bruceworx_pattern.py
     bruceworx_pattern_gui.py
+    bruceworx_toolbars.py
+    bruceworx_grid.py
+    bruceworx_appearance.py
     BruceWorx_RectangularPattern.svg
     BruceWorx_CircularPattern.svg
 )

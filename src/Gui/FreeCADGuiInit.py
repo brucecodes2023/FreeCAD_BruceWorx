@@ -311,6 +311,9 @@ def InitApplications():
         Name = os.path.basename(Dir)
 
         if Name in DisabledAddons:
+            # [BW] Add-ons the BruceWorx top bar replaces (see FreeCADInit.py).
+            if Name in FreeCAD.ConfigGet("BruceWorxReplacedAddons").split(";"):
+                return True
             Msg(
                 f'NOTICE: Addon "{Name}" disabled by presence of "--disable-addon {Name}" argument\n'
             )

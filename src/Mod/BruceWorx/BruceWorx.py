@@ -10,6 +10,11 @@ and the offset parameters. The first apply snapshots the previous overlay
 parameters. Turning the preference off writes that snapshot back, and the
 overlay reload puts those docks back where they were.
 
+The task panel ("Tasks" dock) floats on OverlayRight as the command dialog
+card while FloatingTaskPanel is on (default, roadmap §13.3). It shows while a
+command is open and hides otherwise (TaskShow). Same snapshot, same off switch
+behaviour.
+
 Spike gap (FCB-P1F-11, not done here): the left overlay is pinned to the
 edge. OverlayTabWidget::setRect moves a left panel to x=0, so Offset3 (the
 left inset preference) is stored and not applied. A free-floating panel,
@@ -34,8 +39,10 @@ APPLIED_KEY = "FloatingModelTreeApplied"
 DEFAULT_WIDTH = 280
 DEFAULT_TOP_OFFSET = 8
 DEFAULT_BOTTOM_INSET = 8
-DEFAULT_LEFT_INSET = 0
+DEFAULT_LEFT_INSET = 8
 MIN_WIDTH = 120
+TASK_DOCK = "Tasks"
+TASK_WIDTH = 380
 
 # Keys we rewrite on OverlayLeft. Sizes is cleared while the feature is on
 # so a previous splitter layout is not applied to the model tree alone.
@@ -165,7 +172,7 @@ def _read_int(prefs, name, default):
 def _snapshot_state(overlay_root, style_group):
     sides = {}
     for side in SIDES:
-        keys = LEFT_KEYS if side == "OverlayLeft" else WIDGET_KEYS
+        keys = LEFT_KEYS if side in ("OverlayLeft", "OverlayRight") else WIDGET_KEYS
         sides[side] = _capture(overlay_root.GetGroup(side), keys)
     style = _capture(style_group, ((STYLE_KEY, "str"),))
     return {"style": style, "sides": sides}
@@ -179,6 +186,8 @@ def _apply_tree(prefs, overlay_root, style_group, qss_path, tree_names):
     # Off by default: like Fusion's Browser, the tree stays on screen. With
     # auto-hide on it only appears when the pointer reaches the left edge.
     auto_hide = bool(prefs.GetBool("FloatingModelTreeAutoHide", False))
+    # On by default (user's choice, roadmap §13.3): the model shows through the
+    # Browser; the overlay sheet keeps a halo behind the text so it stays readable.
     transparent = bool(prefs.GetBool("FloatingModelTreeTransparent", True))
 
     for side in SIDES:
@@ -205,8 +214,38 @@ def _apply_tree(prefs, overlay_root, style_group, qss_path, tree_names):
     left_group.SetBool("TaskShow", 0)
     left_group.SetBool("Transparent", 1 if transparent else 0)
 
+    _apply_tasks(prefs, overlay_root)
+
     if qss_path:
         style_group.SetString(STYLE_KEY, qss_path)
+
+
+def _apply_tasks(prefs, overlay_root):
+    """Float the task panel on OverlayRight, or take it off again."""
+    right = overlay_root.GetGroup("OverlayRight")
+    names = parse_widgets(right.GetString("Widgets", ""))
+    if not prefs.GetBool("FloatingTaskPanel", True):
+        if TASK_DOCK in names:
+            right.SetString("Widgets", format_widgets(n for n in names if n != TASK_DOCK))
+        return
+    for side in SIDES:
+        if side == "OverlayRight":
+            continue
+        group = overlay_root.GetGroup(side)
+        stored = _stored_widgets(group)
+        if stored is not None and TASK_DOCK in parse_widgets(stored):
+            group.SetString("Widgets", _strip_names(stored, [TASK_DOCK]))
+    if TASK_DOCK not in names:
+        names.append(TASK_DOCK)
+    right.SetString("Widgets", format_widgets(names))
+    right.SetInt("Width", TASK_WIDTH)
+    right.SetInt("Offset1", DEFAULT_TOP_OFFSET)
+    right.SetInt("Offset2", DEFAULT_BOTTOM_INSET)
+    right.SetBool("AutoHide", 0)
+    right.SetBool("Transparent", 0)
+    right.SetBool("EditHide", 0)
+    right.SetBool("EditShow", 0)
+    right.SetBool("TaskShow", 1)
 
 
 def _restore_state(overlay_root, style_group, snapshot):

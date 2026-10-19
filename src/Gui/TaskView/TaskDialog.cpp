@@ -25,6 +25,7 @@
 #include <QMessageBox>
 
 
+#include <App/Application.h>
 #include <App/Document.h>
 #include <Gui/Application.h>
 #include <Gui/Document.h>
@@ -51,7 +52,16 @@ TaskDialog::TaskDialog()
     , autoCloseTransaction(false)
     , autoCloseDeletedDocument(false)
     , autoCloseClosedView(false)
-{}
+{
+    // [BW] OK/Cancel at the foot of the task panel, like a dialog (roadmap §13.3).
+    // Dialogs that pick a position themselves still do so.
+    auto bw = App::GetApplication().GetParameterGroupByPath(
+        "User parameter:BaseApp/Preferences/BruceWorx"
+    );
+    if (bw->GetBool("TaskButtonsAtBottom", true)) {
+        pos = South;
+    }
+}
 
 TaskDialog::~TaskDialog()
 {

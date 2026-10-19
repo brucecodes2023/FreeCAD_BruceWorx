@@ -11,19 +11,33 @@ from history_timeline.qtcompat import load_qt, qt_enum
 QtCore, QtGui, QtWidgets = load_qt()
 
 _BG = "#323232"
-_HEADER = "#e4e4e4"
-_HINT = "#9a9a9a"
-_BUTTON = "#3d3d3d"
-_BUTTON_BORDER = "#555555"
-_TIP = "#4da3ff"
-_TIP_BG = "#2c4d6e"
-_LABEL = "#f2f2f2"
-_MARKER = "#f5c400"
 _SLASH = "#ff5d5d"
 
-# Previous bar reserved 112px and the dock stretched to match. One third of
-# that still fits a single row of feature chips.
-RIBBON_HEIGHT = 112 // 3
+# One row of 28 px icon chips, as in the roadmap §13.3 mock.
+RIBBON_HEIGHT = 36
+CHIP_WIDTH = 28
+CHIP_ICON = 20
+
+
+def _palette_colors(widget):
+    """Chip colours from the widget's palette, so the bar follows the theme.
+
+    The BruceWorx stylesheet sets them on the chips (``[historyChip="true"]``):
+    ``background-color`` is the chip, ``alternate-background-color`` its border, ``selection-background-color``
+    the tip chip and ``selection-color`` the accent (tip border and marker).
+    Without that sheet the platform palette gives a plain light bar.
+    """
+    pal = widget.palette()
+
+    def role(name):
+        return pal.color(qt_enum(QtGui.QPalette, ("ColorRole", name), (name,)))
+
+    return {
+        "fill": role("Window"),
+        "border": role("AlternateBase"),
+        "tip_fill": role("Highlight"),
+        "accent": role("HighlightedText"),
+    }
 
 
 def _align_center():
@@ -161,7 +175,8 @@ class FeatureButton(QtWidgets.QWidget):
         super().__init__(parent)
         self.entry = entry
         self.setObjectName(f"HistoryTimeline_{entry.name}")
-        self.setFixedSize(96, RIBBON_HEIGHT - 6)
+        self.setProperty("historyChip", True)
+        self.setFixedSize(CHIP_WIDTH, RIBBON_HEIGHT - 10)
         self.setCursor(_pointing_hand())
         self.setMouseTracking(True)
         self._suppress_release = False
@@ -180,33 +195,27 @@ class FeatureButton(QtWidgets.QWidget):
         )
         icon = getattr(entry, "icon", None)
         if icon is not None:
-            self._pixmap = icon.pixmap(QtCore.QSize(16, 16))
+            self._pixmap = icon.pixmap(QtCore.QSize(CHIP_ICON, CHIP_ICON))
         else:
-            self._pixmap = glyph(entry.kind, 16)
+            self._pixmap = glyph(entry.kind, CHIP_ICON)
 
     def paintEvent(self, _event):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(_antialias(), True)
         if self.entry.after_tip:
             painter.setOpacity(0.42)
-        fill = QtGui.QColor(_TIP_BG if self.entry.is_tip else _BUTTON)
-        border = QtGui.QColor(_TIP if self.entry.is_tip else _BUTTON_BORDER)
-        painter.setPen(QtGui.QPen(border, 2 if self.entry.is_tip else 1))
-        painter.setBrush(fill)
-        painter.drawRoundedRect(self.rect().adjusted(1, 1, -2, -2), 4, 4)
-        painter.drawPixmap(4, (self.height() - self._pixmap.height()) // 2, self._pixmap)
-        painter.setPen(QtGui.QColor(_LABEL))
-        font = painter.font()
-        font.setPointSize(8)
-        painter.setFont(font)
-        label = self.entry.label
-        if len(label) > 8:
-            label = label[:7] + "…"
-        align = _align_vcenter() | _align_left()
-        painter.drawText(
-            QtCore.QRect(22, 0, self.width() - 26, self.height()),
-            align,
-            label,
+        colors = _palette_colors(self)
+        if self.entry.is_tip:
+            painter.setPen(QtGui.QPen(colors["accent"], 1))
+            painter.setBrush(colors["tip_fill"])
+        else:
+            painter.setPen(QtGui.QPen(colors["border"], 1))
+            painter.setBrush(colors["fill"])
+        painter.drawRoundedRect(QtCore.QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), 5, 5)
+        size = self._pixmap.deviceIndependentSize().toSize() if hasattr(
+            self._pixmap, "deviceIndependentSize") else self._pixmap.size()
+        painter.drawPixmap(
+            (self.width() - size.width()) // 2, (self.height() - size.height()) // 2, self._pixmap
         )
         if self.entry.suppressed:
             painter.setOpacity(1.0)
@@ -245,7 +254,8 @@ class MarkerWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("HistoryTimelineMarker")
-        self.setFixedWidth(16)
+        self.setProperty("historyChip", True)
+        self.setFixedWidth(8)
         self.setToolTip(
             "History marker. Sits after Body.Tip. "
             "Features to the right stay in the model and still recompute."
@@ -254,17 +264,11 @@ class MarkerWidget(QtWidgets.QWidget):
     def paintEvent(self, _event):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(_antialias(), True)
-        x = self.width() // 2
-        painter.setPen(QtGui.QPen(QtGui.QColor(_MARKER), 2))
-        painter.drawLine(x, 16, x, self.height() - 8)
+        accent = _palette_colors(self)["accent"]
         painter.setPen(_no_pen())
-        painter.setBrush(QtGui.QColor(_MARKER))
-        path = QtGui.QPainterPath()
-        path.moveTo(x - 6, 8)
-        path.lineTo(x + 6, 8)
-        path.lineTo(x, 16)
-        path.closeSubpath()
-        painter.drawPath(path)
+        painter.setBrush(accent)
+        x = self.width() // 2
+        painter.drawRoundedRect(QtCore.QRectF(x - 1.5, 5, 3, self.height() - 10), 1.5, 1.5)
         painter.end()
 
 
@@ -283,16 +287,14 @@ class TimelineBar(QtWidgets.QWidget):
         super().__init__(parent)
         self.setObjectName("HistoryTimelineBar")
         self.setAttribute(_styled_bg(), True)
-        self.setStyleSheet(f"QWidget#HistoryTimelineBar {{ background: {_BG}; }}")
         self.setFixedHeight(RIBBON_HEIGHT)
         self.setToolTip("Click rolls the tip · double-click edits · right-click to suppress")
 
         self._title = QtWidgets.QLabel("History")
-        self._title.setStyleSheet(f"color: {_HEADER}; font-weight: 600;")
+        self._title.setObjectName("HistoryTimelineTitle")
         self._hint = QtWidgets.QLabel(
             "Spike · click rolls the tip · double-click edits · right-click to suppress"
         )
-        self._hint.setStyleSheet(f"color: {_HINT};")
         self._hint.setObjectName("HistoryTimelineHint")
         self._hint.hide()
 
@@ -300,8 +302,8 @@ class TimelineBar(QtWidgets.QWidget):
         self._row.setContentsMargins(4, 0, 4, 0)
         self._row.setSpacing(4)
         row_host = QtWidgets.QWidget()
+        row_host.setObjectName("HistoryTimelineRow")
         row_host.setLayout(self._row)
-        row_host.setStyleSheet(f"background: {_BG};")
 
         scroll = QtWidgets.QScrollArea()
         scroll.setWidgetResizable(True)
@@ -309,10 +311,7 @@ class TimelineBar(QtWidgets.QWidget):
         scroll.setHorizontalScrollBarPolicy(_scroll_as_needed())
         scroll.setVerticalScrollBarPolicy(_scroll_off())
         scroll.setWidget(row_host)
-        scroll.setStyleSheet(
-            f"QScrollArea {{ background: {_BG}; border: none; }}"
-            f"QScrollBar:horizontal {{ height: 6px; background: {_BG}; }}"
-        )
+        scroll.setObjectName("HistoryTimelineScroll")
 
         outer = QtWidgets.QHBoxLayout(self)
         outer.setContentsMargins(8, 2, 4, 2)
@@ -337,15 +336,12 @@ class TimelineBar(QtWidgets.QWidget):
             if widget is not None:
                 widget.deleteLater()
 
-        if body_label:
-            self._title.setText(f"History  ·  {body_label}")
-        else:
-            self._title.setText("History")
+        self._title.setText(body_label or "History")
 
         if not entries:
-            message = empty_message or "No PartDesign body in the active document."
+            message = empty_message or "No feature history in this document."
             label = QtWidgets.QLabel(message)
-            label.setStyleSheet(f"color: {_HINT}; padding: 0px 8px;")
+            label.setObjectName("HistoryTimelineHint")
             self._row.addWidget(label)
             self._row.addStretch(1)
             return

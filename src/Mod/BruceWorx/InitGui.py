@@ -8,7 +8,10 @@ Preferences → BruceWorx. This file:
 * installs the preference page and the overlay model tree (default on),
 * starts the ground grid, which shows only while the preference pack is applied,
 * registers the Rectangular / Circular Pattern commands (bruceworx_pattern_gui),
-* creates the shared top-level BruceWorx menu (bruceworx_menu).
+* creates the shared top-level BruceWorx menu (bruceworx_menu),
+* keeps the toolbars on two rows (bruceworx_toolbars),
+* keeps the sketch grid at the chosen strength (bruceworx_grid),
+* follows the macOS appearance and accent colour (bruceworx_appearance).
 
 It runs before the startup workbench is activated, so the first-run pack's
 startup workbench (PartDesign) is already used on that first start.
@@ -56,3 +59,24 @@ try:
     bruceworx_pattern_gui.install()
 except Exception as exc:  # pragma: no cover - FreeCAD console only
     _bw_warn(f"BruceWorx pattern commands were not installed: {exc}")
+
+try:
+    import bruceworx_toolbars
+
+    bruceworx_toolbars.install()
+except Exception as exc:  # pragma: no cover - FreeCAD console only
+    _bw_warn(f"BruceWorx toolbar layout was not installed: {exc}")
+
+try:
+    import bruceworx_grid
+
+    bruceworx_grid.install()
+except Exception as exc:  # pragma: no cover - FreeCAD console only
+    _bw_warn(f"BruceWorx sketch grid strength was not installed: {exc}")
+
+try:
+    import bruceworx_appearance
+
+    bruceworx_appearance.install()
+except Exception as exc:  # pragma: no cover - FreeCAD console only
+    _bw_warn(f"BruceWorx could not follow the macOS appearance: {exc}")

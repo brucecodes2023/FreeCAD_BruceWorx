@@ -18,6 +18,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bruceworx_defaults as defaults  # noqa: E402
 import bruceworx_pack as pack  # noqa: E402
 import ground_grid  # noqa: E402
+import bruceworx_toolbars as toolbars  # noqa: E402
+import bruceworx_grid as grid  # noqa: E402
+import bruceworx_appearance as appearance  # noqa: E402
 
 
 ROOT = pack.repo_root()
@@ -141,7 +144,7 @@ class PackContentsTest(unittest.TestCase):
         self.assertEqual(entries[("BaseApp/Preferences/View", "DefaultShapeLineWidth")], 1)
         self.assertEqual(entries[("BaseApp/Preferences/View", "DefaultShapeShininess")], 40)
         self.assertEqual(entries[("BaseApp/Preferences/NaviCube", "CornerNaviCube")], 1)
-        self.assertEqual(entries[("BaseApp/Preferences/NaviCube", "CubeSize")], 112)
+        self.assertEqual(entries[("BaseApp/Preferences/NaviCube", "CubeSize")], 96)
         self.assertEqual(entries[("BaseApp/Preferences/NaviCube", "FontString")], "Noto Sans")
         self.assertTrue(entries[("BaseApp/MainWindow/Toolbars", "Part Design Modeling Features")])
         self.assertFalse(entries[("BaseApp/MainWindow/Toolbars", "Macro")])
@@ -217,7 +220,7 @@ class StylesheetTest(unittest.TestCase):
                     if not line or ":" not in line:
                         continue
                     defined.add(line.split(":", 1)[0].strip())
-            missing = tokens - defined
+            missing = tokens - defined - set(appearance.RUNTIME_TOKENS)
             self.assertFalse(missing, f"{filename} missing {sorted(missing)}")
 
 
@@ -379,5 +382,54 @@ class DefaultsOnTest(unittest.TestCase):
             self.assertIn(name, bw)
 
 
+class ToolbarRowsTest(unittest.TestCase):
+    def test_first_workbench_toolbar_starts_row_two(self):
+        names = ["File", "Workbench", "View", "Part Design Helper Features", "Part Design Modeling Features"]
+        self.assertEqual(toolbars.plan_breaks(names), {"Part Design Helper Features"})
+
+    def test_only_app_toolbars_means_one_row(self):
+        self.assertEqual(toolbars.plan_breaks(["File", "Workbench", "View"]), set())
+
+
+class SketchGridTest(unittest.TestCase):
+    def test_default_strength_matches_the_pack(self):
+        entries = {(e["path"], e["name"]): e["value"] for e in pack.pack_entries("dark")}
+        path = "BaseApp/Preferences/Mod/Sketcher/General"
+        self.assertEqual(grid.colors(grid.DEFAULT_STRENGTH, True),
+                         (entries[(path, "GridLineColor")], entries[(path, "GridDivLineColor")]))
+        entries = {(e["path"], e["name"]): e["value"] for e in pack.pack_entries("light")}
+        self.assertEqual(grid.colors(grid.DEFAULT_STRENGTH, False),
+                         (entries[(path, "GridLineColor")], entries[(path, "GridDivLineColor")]))
+
+    def test_white_on_dark_black_on_light_and_clamped(self):
+        minor, major = grid.colors(10, True)
+        self.assertEqual(minor >> 8, 0xFFFFFF)
+        self.assertGreater(major & 0xFF, minor & 0xFF)
+        self.assertEqual(grid.colors(10, False)[0] >> 8, 0)
+        self.assertEqual(grid.colors(999, True), grid.colors(grid.MAX_STRENGTH, True))
+        self.assertEqual(grid.colors(0, True), grid.colors(grid.MIN_STRENGTH, True))
+
+
+class AppearanceTest(unittest.TestCase):
+    def test_text_on_accent_follows_the_contrast_rule(self):
+        # Roadmap §13.3 table: white on blue, purple, pink, red, graphite; black on orange, yellow, green.
+        for index in (4, 5, 6, 0, -1):
+            self.assertEqual(appearance.text_on(appearance.accent_hex(index, False))[1], "white", index)
+        for index in (1, 2, 3):
+            self.assertEqual(appearance.text_on(appearance.accent_hex(index, False))[1], "black", index)
+
+    def test_unknown_accent_is_blue(self):
+        self.assertEqual(appearance.accent_hex(None, True), "#0A84FF")
+        self.assertEqual(appearance.packed("#0A84FF"), 0x0A84FFFF)
+
+    def test_mode_switch_touches_only_theme_dependent_keys(self):
+        names = {(e["path"], e["name"]) for e in appearance.mode_switch_entries(pack, "dark")}
+        self.assertIn(("BaseApp/Preferences/MainWindow", "Theme"), names)
+        self.assertIn(("BaseApp/Preferences/View", "BackgroundColor2"), names)
+        self.assertNotIn(("BaseApp/Preferences/Units", "UserSchema"), names)
+        self.assertNotIn(("BaseApp/Preferences/View", "NavigationStyle"), names)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+

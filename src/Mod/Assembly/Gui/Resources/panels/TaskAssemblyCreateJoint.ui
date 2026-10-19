@@ -372,7 +372,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QToolButton" name="limitDatumClearButton">
+         <widget class="QPushButton" name="limitDatumClearButton">
           <property name="toolTip">
            <string>Measure the limits from the joint's own axes again</string>
           </property>
@@ -384,6 +384,25 @@
        </layout>
       </item>
       <item row="5" column="0" colspan="2">
+       <widget class="QListWidget" name="limitDatumList">
+        <property name="toolTip">
+         <string>The datum on each part. Select one and press Delete (or right-click) to measure that side from the joint axis again</string>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>52</height>
+         </size>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="0" colspan="2">
        <widget class="QLabel" name="limitDatumInfo">
         <property name="wordWrap">
          <bool>true</bool>

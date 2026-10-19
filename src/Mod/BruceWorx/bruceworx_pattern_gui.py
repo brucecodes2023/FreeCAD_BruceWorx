@@ -136,9 +136,20 @@ class PatternTaskPanel:
         form.setWindowTitle(title)
         layout = QtWidgets.QVBoxLayout(form)
 
-        seeds = ", ".join(a.PatternSeed.Label for a in self.arrays if a.PatternSeed is not None)
-        objects = QtWidgets.QLabel(f"<b>Objects:</b> {seeds}")
-        objects.setWordWrap(True)
+        # The patterned objects as a list, like the picks in other task panels.
+        layout.addWidget(QtWidgets.QLabel("Objects"))
+        objects = QtWidgets.QListWidget()
+        objects.setObjectName("patternObjects")
+        for array in self.arrays:
+            seed = array.PatternSeed
+            if seed is None:
+                continue
+            item = QtWidgets.QListWidgetItem(seed.Label)
+            if getattr(seed, "ViewObject", None) is not None:
+                item.setIcon(seed.ViewObject.Icon)
+            objects.addItem(item)
+        rows = max(1, min(objects.count(), 4))
+        objects.setFixedHeight(rows * 22 + 6)
         layout.addWidget(objects)
 
         type_row = QtWidgets.QHBoxLayout()

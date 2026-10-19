@@ -106,7 +106,7 @@ private:
         bool divLines,
         bool subDivLines,
         int pattern,
-        SoBaseColor* color,
+        SoMaterial* color,
         int lineWidth = 1
     );
 
@@ -276,12 +276,15 @@ void GridExtensionP::createGrid(bool cameraUpdate)
 
     computeGridSize(viewer);
 
+    // [BW] Honour the colour's alpha: faint grid lines must stay lighter (or darker)
+    // than a gradient background everywhere, which an opaque grey cannot do.
     auto getColor = [](auto unpackedcolor) {
-        SoBaseColor* lineColor = new SoBaseColor;
+        auto* lineColor = new SoMaterial;
         float transparency;
         SbColor lineCol(0.7f, 0.7f, 0.7f);
         lineCol.setPackedValue(unpackedcolor, transparency);
-        lineColor->rgb.setValue(lineCol);
+        lineColor->diffuseColor.setValue(lineCol);
+        lineColor->transparency.setValue(transparency);
         return lineColor;
     };
 
@@ -313,7 +316,7 @@ void GridExtensionP::createGridPart(
     bool subDivLines,
     bool divLines,
     int pattern,
-    SoBaseColor* color,
+    SoMaterial* color,
     int lineWidth
 )
 {

@@ -1,31 +1,176 @@
-/* [BW] FCB-P1F-07. Applied only while Preferences/BruceWorx/FloatingModelTree is on.
-   Semi-transparent left overlay (the model tree). Other overlay sides stay readable
-   if they share this sheet for that time. Literal colors: this file replaces the
-   overlay sheet. Theme color tokens are not used here. */
+/* [BW] FCB-P1F-07, roadmap §13.3. Applied while Preferences/BruceWorx/FloatingModelTree is on, to the
+   floating panels only: the Browser (model tree and properties) on the left and the command dialog
+   (task panel) on the right. FreeCAD fills in the theme tokens from the active theme (OverlayManager runs
+   replaceVariablesInQss), so this one sheet serves light and dark. Token colours carry no alpha.
+   This file replaces the stock overlay sheet while it is active. */
+
+/* Both panels: a card inset from the window edge. */
+Gui--OverlayTabWidget {
+  background-color: @CardBackgroundColor;
+  border: 1px solid @GeneralBorderColor;
+  border-radius: 10px;
+  qproperty-effectColor: @CardBackgroundColor;
+  qproperty-effectBlurRadius: 0;
+  qproperty-effectOffsetX: 0;
+  qproperty-effectOffsetY: 0;
+  qproperty-effectWidth: 1;
+  qproperty-effectHeight: 1;
+  qproperty-enableEffect: 1;
+}
 
 Gui--OverlayTabWidget#OverlayLeft {
-  background-color: rgba(32, 34, 38, 170);
-  border: 1px solid rgba(255, 255, 255, 40);
+  margin-left: 8px;
+}
+
+Gui--OverlayTabWidget#OverlayRight {
+  margin-right: 8px;
+}
+
+/* A floating panel draws its children translucent, so the card is painted by the tab pane. */
+Gui--OverlayTabWidget::pane {
+  background-color: @CardBackgroundColor;
+  border: 1px solid @GeneralBorderColor;
+  border-radius: 10px;
+}
+
+Gui--OverlayTabWidget#OverlayLeft[transparent="true"]::pane {
+  background-color: @BrowserCardColor;
+  border-color: @GeneralBorderColor;
+}
+
+Gui--OverlayTabWidget QTreeView,
+Gui--OverlayTabWidget Gui--TreePanel,
+Gui--OverlayTabWidget Gui--PropertyEditor--PropertyEditor {
+  background-color: @CardBackgroundColor;
+  alternate-background-color: @CardBackgroundColor;
+  color: @TextForegroundColor;
+  border: none;
+}
+
+Gui--OverlayTabWidget QTreeView::item {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+Gui--OverlayTabWidget QTreeView::item:hover {
+  background-color: @HoverColor;
+}
+
+Gui--OverlayTabWidget QTreeView::item:selected {
+  background-color: @AccentSoftColor;
+  color: @TextForegroundColor;
+}
+
+Gui--OverlayTabWidget QHeaderView::section {
+  background-color: @CardBackgroundColor;
+  color: @TextSecondaryColor;
+  border: none;
+  border-bottom: 1px solid @GeneralBorderColor;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+Gui--OverlayTabWidget QLineEdit {
+  background-color: @TextEditFieldBackgroundColor;
+  color: @TextForegroundColor;
+  border: 1px solid @GeneralBorderColor;
   border-radius: 6px;
 }
 
-Gui--OverlayTabWidget#OverlayLeft QTreeView,
-Gui--OverlayTabWidget#OverlayLeft Gui--TreePanel,
-Gui--OverlayTabWidget#OverlayLeft Gui--PropertyEditor--PropertyEditor {
-  background-color: rgba(32, 34, 38, 150);
-  alternate-background-color: rgba(255, 255, 255, 12);
-  color: rgba(240, 240, 240, 230);
+Gui--OverlayTitleBar {
+  background-color: transparent;
+  color: @TextSecondaryColor;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+Gui--OverlaySplitterHandle {
+  background-color: @GeneralBorderColor;
+}
+
+Gui--OverlayToolButton {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+}
+
+Gui--OverlayToolButton:hover {
+  background: @HoverColor;
+}
+
+/* Transparent Browser (Preferences > BruceWorx > Transparent background): a tinted glass card,
+   72 % opaque (@BrowserCardColor; the token engine passes an rgba() with a percentage through
+   unparsed, so it keeps its alpha). The model shows through, and the text keeps a halo in the card
+   colour (the effect above). */
+Gui--OverlayTabWidget#OverlayLeft[transparent="true"],
+Gui--OverlayTabWidget#OverlayLeft[transparent="true"] QTreeView,
+Gui--OverlayTabWidget#OverlayLeft[transparent="true"] Gui--TreePanel,
+Gui--OverlayTabWidget#OverlayLeft[transparent="true"] Gui--PropertyEditor--PropertyEditor,
+Gui--OverlayTabWidget#OverlayLeft[transparent="true"] QHeaderView::section {
+  background-color: transparent;
+  alternate-background-color: transparent;
+  border-color: transparent;
+}
+
+Gui--OverlayTabWidget#OverlayLeft[transparent="true"] QTabWidget::pane,
+Gui--OverlayTabWidget#OverlayLeft[transparent="true"] QTabBar::tab {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+Gui--OverlayTabWidget#OverlayLeft[transparent="true"] QTabBar::tab:selected {
+  color: @TextForegroundColor;
+  border-bottom: 2px solid @AccentColor;
+}
+
+Gui--OverlayTabWidget#OverlayLeft[transparent="true"] Gui--PropertyEditor--PropertyEditor {
+  /* Literal colours: the token engine would drop the alpha. */
+  qproperty-itemBackground: rgba(0, 0, 0, 0);
+  qproperty-groupBackground: rgba(0, 0, 0, 0);
+}
+
+/* Command dialog: one card. The task boxes inside are flat sections divided by hairlines. Every
+   layer paints the card colour: a floating panel draws its children with translucent backgrounds,
+   so a transparent layer would show stale pixels of the panel it replaced. */
+Gui--OverlayTabWidget#OverlayRight Gui--TaskView--TaskView,
+Gui--OverlayTabWidget#OverlayRight Gui--TaskView--TaskView QScrollArea,
+Gui--OverlayTabWidget#OverlayRight Gui--TaskView--TaskView QScrollArea > QWidget > QWidget,
+Gui--OverlayTabWidget#OverlayRight QSint--ActionPanel {
+  background-color: @CardBackgroundColor;
   border: none;
 }
 
-Gui--OverlayTabWidget#OverlayLeft QHeaderView,
-Gui--OverlayTabWidget#OverlayLeft QLineEdit {
-  background-color: rgba(32, 34, 38, 190);
-  color: rgba(240, 240, 240, 230);
+Gui--OverlayTabWidget#OverlayRight QSint--ActionGroup {
   border: none;
+  border-radius: 0px;
+  background-color: @CardBackgroundColor;
 }
 
-Gui--OverlayTabWidget#OverlayLeft QTreeView::item:selected {
-  background-color: rgba(80, 140, 220, 160);
-  color: rgba(255, 255, 255, 240);
+Gui--OverlayTabWidget#OverlayRight QSint--ActionGroup QFrame[class="header"] {
+  background-color: @CardBackgroundColor;
+  border: none;
+  border-top: 1px solid @GeneralBorderColor;
+  border-radius: 0px;
+  padding: 4px 2px 0px 2px;
+}
+
+Gui--OverlayTabWidget#OverlayRight QSint--ActionGroup QToolButton[class="header"] {
+  color: @TextSecondaryColor;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+Gui--OverlayTabWidget#OverlayRight QSint--ActionGroup QFrame[class="content"],
+Gui--OverlayTabWidget#OverlayRight QSint--ActionGroup QFrame[class="content"] > QWidget {
+  background-color: @CardBackgroundColor;
+  border: none;
+  border-radius: 0px;
+  padding: 2px 4px 6px 4px;
+}
+
+Gui--OverlayTabWidget#OverlayRight QDialogButtonBox {
+  background-color: @CardBackgroundColor;
+  border-top: 1px solid @GeneralBorderColor;
+  padding: 6px 8px;
 }
