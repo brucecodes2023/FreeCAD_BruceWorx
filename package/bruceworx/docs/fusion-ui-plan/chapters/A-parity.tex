@@ -1,0 +1,101 @@
+%======================================================================
+\section{Parity matrix}\label{app:parity}
+%======================================================================
+
+\pfull{} full \quad \phalf{} partial \quad \pnone{} none \quad \padd{} add-on only. Fusion = Fusion~360 with
+its extensions, SW = SolidWorks 2026 (Premium/PDM/Simulation), both from public vendor and reseller material
+(Oct 2026). A cell marked † is the vendor capability we could not confirm from that material. The FreeCAD column is
+\emph{1.1.4 as built in this repository}, with the evidence found in \file{src/} or by headless experiment.
+``Out of scope'' rows were not selected in the interview and have no epic.
+
+\begin{center}
+\small
+\begin{longtable}{@{}p{4.2cm}ccc p{5.6cm} p{1.5cm}@{}}
+\toprule
+Capability & Fusion & SW & FC & FreeCAD evidence / note & Epic\\
+\midrule\endhead
+\bottomrule\endfoot
+\multicolumn{6}{@{}l}{\textbf{Sketch and part}}\\
+Parametric sketch \& constraints & \pfull & \pfull & \pfull & Sketcher & MOD-12\\
+Extrude, revolve, sweep, loft & \pfull & \pfull & \pfull & PartDesign & ---\\
+Fillet, chamfer, shell, draft & \pfull & \pfull & \pfull & PartDesign & ---\\
+Hole wizard / presets & \pfull & \pfull & \phalf & \code{Hole} feature; no insert presets & MOD-05\\
+Cosmetic threads & \pfull & \pfull & \phalf & TechDraw view extension only & MOD-05\\
+Feature patterns & \pfull & \pfull & \phalf & \code{LinearPattern} dir.-2 bug; no symmetric/suppress & MOD-01\\
+Body / component patterns & \pfull & \pfull & \phalf & Draft link arrays, not assembly-aware & MOD-01\\
+Parameters dialog & \pfull & \pfull & \phalf & Spreadsheet, \code{VarSet}, expressions & MOD-02\\
+Configurations / design tables & \pfull & \pfull & \pnone & none found in Spreadsheet or App & MOD-03\\
+Multi-body, derive, skeleton & \pfull & \pfull & \phalf & \code{SubShapeBinder} cross-document & MOD-02\\
+Direct edit (press-pull, move face) & \pfull & \pfull & \phalf & \code{Part\_Defeaturing} only (verified) & MOD-04\\
+Surfacing (patch, trim, stitch) & \pfull & \pfull & \phalf & Surface WB: Filling, Sections, Extend, Blend & MOD-08\\
+Continuity / zebra analysis & \pfull & \pfull & \pnone & --- & MOD-08\\
+Freeform / T-spline & \pfull & \phalf & \pnone & --- & MOD-09\\
+Mesh $\rightarrow$ B-rep & \pfull & \pfull & \phalf & \code{Part\_ShapeFromMesh} (faceted), ReverseEngineering & MOD-10\\
+Sheet metal & \pfull & \pfull & \padd & SheetMetal add-on (to bundle) & MOD-06\\
+Weldments / frames & \phalf† & \pfull & \pnone & --- & MOD-07\\
+Plastic features (rib, boss, snap) & \pfull & \pfull & \pnone & out of scope (no molding) & ---\\
+Measure & \pfull & \pfull & \pfull & Measure WB & ---\\
+Mass properties & \pfull & \pfull & \phalf & \code{MeasureCOM}; no inertia report & MOD-11\\
+Section analysis & \pfull & \pfull & \phalf & clipping / section cut & MOD-11\\
+Draft / overhang analysis & \pfull & \pfull & \pnone & --- & MOD-11\\
+Wall-thickness analysis & \phalf† & \pfull & \pnone & --- & MOD-11\\
+\midrule
+\multicolumn{6}{@{}l}{\textbf{Assembly}}\\
+Joints / mates & \pfull & \pfull & \pfull & Assembly WB (Ondsel solver) & ASM-03\\
+Joint limits while dragging & \pfull & \pfull & \phalf & limit properties exist; drag to check & ASM-03\\
+Rigid / flexible sub-assemblies & \pfull & \pfull & \phalf & to audit & ASM-05\\
+Exploded views & \pfull & \pfull & \pfull & \code{Assembly\_CreateView} & ASM-04\\
+BOM (indented, flattened, props) & \pfull & \pfull & \phalf & 4 auto columns + custom & ASM-04\\
+Interference / clearance & \pfull & \pfull & \pnone & no command found & ASM-06\\
+In-context editing & \pfull & \pfull & \phalf & \code{SubShapeBinder} & ASM-07\\
+Large-assembly mode & \phalf & \pfull & \pnone & no lightweight mode found & ASM-08\\
+Smart fasteners & \phalf† & \pfull & \pnone & --- & ASM-09\\
+Standard-parts library & \pfull & \pfull & \padd & Fasteners add-on & MOD-05\\
+Kinematic motion & \pfull & \pfull & \pfull & \code{Assembly\_CreateSimulation} (1.1) & ROB-05\\
+Dynamic motion & \phalf & \pfull & \pnone & solver dynamics not exposed & ASM-10\\
+\midrule
+\multicolumn{6}{@{}l}{\textbf{Simulation}}\\
+Linear static & \pfull & \pfull & \pfull & CalculiX \code{static} & SIM-01\\
+Contact \& bolts & \pfull & \pfull & \phalf & contact (1.1); no bolt connector & SIM-02\\
+Modal & \pfull & \pfull & \pfull & CalculiX \code{frequency} & SIM-01\\
+Buckling & \pfull & \pfull & \pfull & CalculiX \code{buckling} & SIM-01\\
+Thermal / thermal stress & \pfull & \pfull & \pfull & \code{thermomech}, Elmer & SIM-01\\
+Study setup UX & \pfull & \pfull & \phalf & FEM WB, manual & SIM-01\\
+Safety-factor result & \pfull & \pfull & \pnone & none in \code{femresult} & SIM-04\\
+Orthotropic materials & \phalf† & \pfull & \pnone & none in \file{src/Mod/Fem} & SIM-03\\
+Nonlinear / event & \pfull & \pfull & \phalf & out of scope & ---\\
+Fatigue & \pnone† & \pfull & \pnone & out of scope & ---\\
+CFD & \phalf & \pfull & \phalf & Elmer flow; CfdOF add-on & SIM-06\\
+Generative / topology & \pfull & \phalf & \pnone & out of scope & ---\\
+\midrule
+\multicolumn{6}{@{}l}{\textbf{Drawings}}\\
+Projected, section, detail, broken & \pfull & \pfull & \pfull & TechDraw & DRW-06\\
+Dimensions incl.\ ordinate/chain & \pfull & \pfull & \pfull & TechDraw + extensions & ---\\
+GD\&T (semantic) & \pfull & \pfull & \phalf & SVG symbol library only & DRW-03\\
+Hole \& thread callouts & \pfull & \pfull & \phalf & drawing-side extension & DRW-04\\
+Parts list + balloons & \pfull & \pfull & \phalf & balloons; spreadsheet view & DRW-02\\
+Revision table & \pfull & \pfull & \phalf & template fields only & DRW-05\\
+Templates \& autofill & \pfull & \pfull & \pfull & SVG templates, autofill & DRW-01\\
+Auto-generate drawing & \pfull† & \pfull & \pnone & --- & DRW-06\\
+Flat pattern + bend table & \pfull & \pfull & \padd & SheetMetal add-on & DRW-07\\
+PDF / DXF export & \pfull & \pfull & \pfull & TechDraw & DRW-08\\
+\midrule
+\multicolumn{6}{@{}l}{\textbf{Data management}}\\
+Version history & \pfull & \pfull & \pnone & --- & PDM-04\\
+Check-in/out \& locking & \phalf† & \pfull & \pnone & --- & PDM-04\\
+Part numbering & \pfull & \pfull & \phalf & BruceWorx JSON source (\#5) & PDM-03\\
+Lifecycle \& change orders & \pfull & \pfull & \pnone & --- & PDM-05\\
+BOM sync \& where-used & \pfull & \pfull & \pnone & --- & PDM-06\\
+Release package & \phalf & \phalf & \pnone & --- & MFG-04\\
+\midrule
+\multicolumn{6}{@{}l}{\textbf{Manufacturing and other}}\\
+CAM (2.5D--5 axis) & \pfull & \pfull & \pfull & CAM WB; GRBL, LinuxCNC posts & MFG-02\\
+3D-print prep \& slicer handoff & \pfull & \phalf & \phalf & 3MF export (Mesh) & MFG-01\\
+Flat DXF for laser & \pfull & \pfull & \padd & SheetMetal add-on + DXF & MFG-03\\
+Rendering & \pfull & \pfull & \pnone & out of scope (add-on exists) & ---\\
+Electronics / ECAD link & \pfull & \phalf & \padd & KiCad StepUp add-on & ECD-01\\
+Scripting / API & \pfull & \pfull & \pfull & Python; headless hooks (\#5) & AUT-02\\
+Cloud collaboration & \pfull & \phalf & \pnone & decided via PDM evaluation & PDM-01\\
+AI assistant & \phalf & \phalf & \pnone & --- & AUT-04\\
+\end{longtable}
+\end{center}

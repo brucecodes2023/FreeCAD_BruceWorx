@@ -1,0 +1,142 @@
+%======================================================================
+\section{Track ASM --- Assembly}\label{sec:asm}
+%======================================================================
+
+FreeCAD 1.1's Assembly workbench already provides joints (Ondsel solver), grounding, exploded views
+(\code{Assembly\_CreateView}), a BOM (\code{Assembly\_CreateBom}: Index, Name, File Name, Quantity, plus custom
+columns) and kinematic simulation (\code{Assembly\_CreateSimulation}, new in 1.1). This track builds on
+those. The file model comes first, because PDM, drawings and BOMs all depend on it.
+
+\begin{epic}{ASM-01}{File model: one part per file}{M1}{\stTodo}{(new)}
+SolidWorks-style, as decided: every part is its own \code{.FCStd} with its own P/N, and assemblies
+reference parts through \code{App::Link} to external documents with \emph{relative} paths. Tooling:
+\textbf{make external} (split the bodies of a multi-body design file into numbered part files and relink),
+\textbf{pack and go} (copy an assembly with all its references), and a \textbf{broken-reference resolver}.
+\emph{Acceptance:} \code{LE-02001} opens from a moved folder with no broken links.
+\end{epic}
+
+\paragraph{Theory: assemblies as a DAG.} Documents form a directed acyclic graph with edges assembly
+$\rightarrow$ component and multiplicities $q$. A component \emph{occurrence} is a path
+$a_0\to a_1\to\dots\to p$ from the top assembly. Its world placement is the product of the link placements
+along the path, $P = P_{a_0a_1}P_{a_1a_2}\cdots P_{a_kp}$. Occurrences, not files, carry joints, colour
+overrides and BOM item numbers. Making parts external changes nothing in occurrence space, only which
+document owns the geometry. That is why the conversion can be automatic.
+
+\begin{epic}{ASM-02}{Assembly gap audit}{M1}{\stDone}{FCB-P2A-01/02}
+Audit current Assembly against a SolidWorks/Fusion checklist and against upstream main. \textbf{Approved
+19 Oct 2026 (\S\ref{sec:asm-audit})}; it re-scopes \eref{ASM-03}--\eref{ASM-10}. Three behaviours still need the
+screen and are in the test checklist.
+\end{epic}
+
+\input{chapters/32-asm-audit}
+\input{chapters/34-partprops}
+\input{chapters/36-joints}
+
+\begin{epic}{ASM-03}{Joint UX \& limits}{M1}{\stProg}{FCB-P2A-03/04}
+A pick-two-features \textbf{quick joint} that infers the joint type (cylinder + cylinder $\rightarrow$
+revolute, plane + plane $\rightarrow$ planar, and so on), keyboard shortcuts, and \textbf{limit sliders} that the
+solver honours while dragging. \textbf{Built 19 Oct (\S\ref{sec:joints}):} limits measured from datums, a drag
+backstop at the limits, and \emph{Keep parts where they are}.
+\emph{Acceptance:} the 2-DOF arm is assembled with quick joints, and limits stop the drag.
+\end{epic}
+
+\begin{epic}{ASM-04}{Exploded views \& BOM}{M1}{\stProg}{FCB-P2A-05/06}
+Exploded-view presets, and a BOM with \textbf{P/N, Rev, Description, Material, Mass, Qty}, in
+\emph{indented}, \emph{top-level} and \emph{flattened (parts only)} forms, exported to CSV. Configurations are
+resolved per component (\eref{MOD-03}). The same BOM feeds the drawing table (\eref{DRW-02}) and Ops
+(\eref{PDM-06}).
+\textbf{Started 19 Oct 2026:} the columns come from the part-property schema (\S\ref{sec:partprops}), with
+Mass and Material computed.
+\emph{Acceptance:} the \code{LE-02001} BOM matches a hand count; the flattened BOM sums quantities.
+\end{epic}
+
+\paragraph{Theory: BOM explosion.} With edge multiplicities $q_{uv}$ in the assembly DAG, the total quantity
+of part $p$ under top assembly $t$ is the sum over all paths of the product of multiplicities,
+\[
+  Q_t(p) = \sum_{\pi:\,t\rightsquigarrow p}\ \prod_{(u,v)\in\pi} q_{uv},
+\]
+computed in $O(|V|+|E|)$ by dynamic programming in topological order, $Q(v)=\sum_{u\to v}Q(u)\,q_{uv}$ with
+$Q(t)=1$. The \emph{indented} BOM lists paths, and the \emph{flattened} BOM lists $Q_t(p)$ for leaf parts.
+\emph{Where-used} (\eref{PDM-06}) is the same traversal on the reversed graph.
+
+\begin{epic}{ASM-05}{Sub-assemblies}{M1}{\stTodo}{FCB-P2A-07}
+Rigid vs.\ flexible sub-assemblies. A flexible one exposes its internal joints to the parent's solver; a
+rigid one moves as one body. A fix-up macro converts between them.
+\emph{Acceptance:} a flexible sub-assembly articulates inside \code{LE-02001}; a rigid one does not.
+\end{epic}
+
+\begin{epic}{ASM-06}{Interference \& clearance}{M1}{\stTodo}{FCB-P2A-08}
+List every \textbf{clash} (positive common volume), \textbf{contact} (touching faces, zero volume) and
+\textbf{clearance violation} (minimum distance below a threshold) between occurrences. Results are
+highlighted in the view, with an ignore list for intended press fits and threads. The ECAD enclosure fit
+(\eref{ECD-04}) reuses it.
+\emph{Acceptance:} the bolt example in Figure~\ref{fig:clash} reports one clash, 4.0\,mm deep and 78.5\,mm$^3$.
+\end{epic}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\linewidth]{fig/interference.png}
+\caption{Half section of an M5 bolt that is 4\,mm too long for its 12\,mm blind hole. The clash volume
+(red) is the Boolean common of bolt and block: 78.54\,mm$^3$ $=\pi\cdot2.5^2\cdot4$, computed in headless
+FreeCAD. The section itself is the kind of view \eref{MOD-11} keeps in the model.}
+\label{fig:clash}
+\end{figure}
+
+\paragraph{Theory: broad and narrow phase.} Checking all $\binom n2$ pairs exactly is too slow for a robot with
+hundreds of parts. A \emph{broad phase} sorts the axis-aligned bounding boxes on each axis and sweeps,
+reporting only pairs whose intervals overlap on all three axes. That takes $O(n\log n+k)$ for $k$ candidate pairs.
+The \emph{narrow phase} runs the exact Boolean common (clash volume) or \code{distToShape} (clearance)
+only on candidates. Contacts are separated from clashes by a volume tolerance $\varepsilon_V$ and a
+distance tolerance $\varepsilon_d$. Pairs on the ignore list (threads, press fits) are filtered by occurrence
+path, so they stay ignored after the assembly is rebuilt.
+
+\begin{epic}{ASM-07}{In-context editing}{M5}{\stTodo}{(new)}
+Edit a part while it is shown inside the assembly, referencing other parts' geometry (Fusion's in-place edit,
+SolidWorks' in-context features). References become cross-document \code{SubShapeBinder}s and update when
+the referenced part changes. They can be \textbf{locked} (frozen) or \textbf{broken}. A dashboard lists all
+external references.
+\emph{Acceptance:} bracket holes follow a moved motor mount across files.
+\end{epic}
+
+\begin{epic}{ASM-08}{Large-assembly mode}{M5}{\stTodo}{(new)}
+Open a full robot quickly. That means \textbf{lightweight} loading (display data without the feature tree),
+\textbf{selective open} (choose the sub-assemblies to load), cached tessellation, and level of detail
+for small parts. The spike measures FreeCAD's existing partial-document loading for links first \verify.
+\emph{Acceptance:} an assembly of more than 500 parts opens within a target set by the spike.
+\end{epic}
+
+\begin{epic}{ASM-09}{Smart fastener mating}{M5}{\stTodo}{FCB-P2R-04}
+Select a hole pattern and a fastener type. The command recognises the holes (\eref{MOD-04} recognition,
+\eref{MOD-05} data), picks size and length, inserts linked fasteners (and washers and nuts), and joints them.
+This matches SolidWorks Toolbox smart fasteners and its 2026 fastener recognition.
+\emph{Acceptance:} bolting a motor mount places and joints all its screws in one command.
+\end{epic}
+
+\paragraph{Theory: length selection.} For a through-bolt with clamp (grip) thickness $g$ into a tapped or
+insert hole of usable depth $h$, the required engagement is $e\ge k\,d$, with $k\approx1.5$ in aluminium
+and plastics, or the insert length for heat-set inserts. The chosen standard length is the smallest catalogue
+length $L$ with
+\[
+  g + e \;\le\; L \;\le\; g + h - c ,
+\]
+where $c$ is the bottom clearance. If the set is empty, the command reports the conflict instead of
+choosing. Figure~\ref{fig:clash} shows the failure it prevents.
+
+\begin{epic}{ASM-10}{Dynamic motion study}{M5}{\stTodo}{FCB-P2A-10}
+Beyond kinematic animation: \textbf{gravity, applied forces and torques, motor profiles, springs and
+dampers, and contact}, integrated over time, with plots (position, velocity, reaction forces, motor
+torque) and video export. The spike checks how much of the Ondsel (MbD) solver's dynamics can be used
+\verify.
+\emph{Acceptance:} the arm swinging under gravity matches the analytic pendulum period within 2\,\%.
+\end{epic}
+
+\paragraph{Theory: constrained multibody dynamics.} With generalised coordinates $\mathbf q$, mass
+matrix $M(\mathbf q)$, applied forces $\mathbf Q$ and joint constraints $\Phi(\mathbf q,t)=\mathbf 0$,
+\[
+  M\ddot{\mathbf q}+\Phi_{\mathbf q}^{\!\top}\boldsymbol\lambda=\mathbf Q,\qquad \Phi(\mathbf q,t)=\mathbf 0,
+\]
+an index-3 differential-algebraic system. The Lagrange multipliers $\boldsymbol\lambda$ are the joint reaction
+forces, which is what users want plotted to size motors. It is solved by index reduction to
+$\Phi_{\mathbf q}\ddot{\mathbf q}=-(\Phi_{\mathbf q}\dot{\mathbf q})_{\mathbf q}\dot{\mathbf q}-2\Phi_{\mathbf qt}\dot{\mathbf q}-\Phi_{tt}$
+with Baumgarte stabilisation, or with a generalised-$\alpha$ integrator on the index-3 form. Validation uses a
+pendulum, $T=2\pi\sqrt{I_O/(m g\ell)}$.

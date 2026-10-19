@@ -1,0 +1,100 @@
+%======================================================================
+\subsection{BW-ASM-02 --- Assembly gap audit (approved, 19 Oct 2026)}\label{sec:asm-audit}
+%======================================================================
+
+\textbf{Method.} The Assembly workbench in this repository (FreeCAD 1.1.4) was read command by command
+(\file{src/Mod/Assembly}), and compared with a SolidWorks/Fusion checklist and with the 97 upstream commits
+to \file{src/Mod/Assembly} since the 1.1 release (24 Mar -- 10 Oct 2026, GitHub API). The ``upstream'' column
+is what the rebase to main (\eref{FND-03}) brings without any BruceWorx work. Items marked \verify{} need the
+GUI and are in the next test session. \textbf{Gate:} the mechanical reviewer approves this list; it then
+re-scopes \eref{ASM-03}--\eref{ASM-10}.
+
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\code}[1]{\texttt{#1}}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{2.9cm}cc >{\raggedright\arraybackslash}p{4.6cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{2.3cm}@{}}
+\toprule
+Capability & SW & Fusion & FreeCAD 1.1.4 (this build) & Upstream main since 1.1 & Gap $\rightarrow$ epic\\
+\midrule\endhead
+\bottomrule\endfoot
+\multicolumn{6}{@{}l}{\textbf{Joints}}\\
+Fixed / rigid & \pfull & \pfull & \pfull{} Fixed & --- & ---\\
+Revolute, slider, cylindrical, ball & \pfull & \pfull & \pfull{} all four & joint rotate button & ---\\
+Planar & \pfull & \pfull & \phalf{} via Distance on two planes (solver \code{ASMTPlanarJoint}) & --- & UX: name it (ASM-03)\\
+Tangent / cam & \pfull & \phalf & \phalf{} Distance 0 plane--cylinder = tangent; no cam & --- & cam: later\\
+Pin-slot & \pnone & \pfull & \pnone & --- & ASM-03\\
+Gear, rack-pinion, screw, belt & \pfull & \phalf & \pfull{} Gears, RackPinion, Screw, Belt & coaxial gear joint; rack-pinion fix & ---\\
+Parallel, perpendicular, angle, distance & \pfull & \phalf & \pfull & --- & ---\\
+Width / symmetric / path / slot mates & \pfull & \pnone & \pnone & --- & later (not in Fusion)\\
+Quick joint (type inferred from picks; SW smart mates) & \pfull & \pfull & \pnone{} one command per type & ``put unconnected part second'' & ASM-03\\
+Joint limits & \pfull & \pfull & \phalf{} Length/Angle min--max passed to solver (\code{ASMTTranslationLimit}, \code{ASMTRotationLimit}); honoured while dragging (verified headless); not by a plain solve. Zero from datums: built, section~\ref{sec:joints} & --- & ASM-03\\
+As-built joints (no move) & \phalf & \pfull & \pfull{} \emph{Keep parts where they are} (built 19 Oct) & --- & ASM-03\\
+Rigid groups & \pfull & \pfull & \pnone & \textbf{RigidGroup (\#29605)} & rebase\\
+Edit joint from context menu & \pfull & \pfull & \phalf{} double-click & \textbf{``Edit joint'' entry} & rebase\\
+\midrule
+\multicolumn{6}{@{}l}{\textbf{Structure}}\\
+Insert existing part & \pfull & \pfull & \pfull{} \code{Assembly\_InsertLink} & label fix & ---\\
+New part in context & \pfull & \pfull & \pfull{} \code{Assembly\_InsertNewPart} creates \emph{and saves a separate document} --- matches one-file-per-part & joint creation fix & ASM-01 builds on it\\
+Sub-assemblies, rigid vs flexible & \pfull & \pfull & \pfull{} \code{AssemblyLink.Rigid} & parent refresh; rigid-change fix & ASM-05 shrinks to verification\\
+Grounding & \pfull & \pfull & \pfull & \textbf{grounded parts unmovable} & rebase\\
+Component patterns & \pfull & \pfull & \pfull{} BruceWorx link arrays (MOD-01, today) & \textbf{generated arrays + suppressed elements} & align on rebase\\
+Mirror components & \pfull & \pfull & \pnone & --- & new, small (ASM-03)\\
+Position snapshots / configurations & \pfull & \pfull & \pnone & \textbf{snapshots (\#25384)} & rebase\\
+\midrule
+\multicolumn{6}{@{}l}{\textbf{Motion and checks}}\\
+Free drag with solver & \pfull & \pfull & \pfull{} \code{preDrag}/\code{doDragStep} & island drag (\#30998); transformed-assembly fixes & rebase\\
+Kinematic simulation / drive joints & \pfull & \pfull & \pfull{} \code{Assembly\_CreateSimulation} (Angular/Linear motions, formulas) & formula fixes; \textbf{video export (PyAV)} & ROB-05\\
+Dynamic motion (gravity, forces, contact) & \pfull & \phalf & \pnone & --- & ASM-10\\
+Collision detection during drag (Fusion contact sets) & \pfull & \pfull & \pnone & --- & ASM-06 (+ later)\\
+Interference / clearance check & \pfull & \pfull & \pnone{} nothing in \file{src/Mod/Assembly} & --- & ASM-06\\
+Degrees of freedom readout & \pfull & \phalf & \phalf & DoF fix with bundled fixed joints & ---\\
+\midrule
+\multicolumn{6}{@{}l}{\textbf{Documentation output}}\\
+Exploded views & \pfull & \pfull & \pfull{} \code{Assembly\_CreateView} & \textbf{move controls (\#30955)} & rebase + ASM-04 presets\\
+BOM & \pfull & \pfull & \phalf{} Index, Name, File Name, Quantity automatic; \textbf{custom columns read same-named properties of each part} (\code{BomObject.cpp:283}) & --- & ASM-04 = add P/N, Rev, Material, Mass \emph{properties} to parts (PDM-02)\\
+Mass properties of assembly & \pfull & \pfull & \phalf{} \code{MeasureCOM} & --- & MOD-11, ROB-03\\
+\midrule
+\multicolumn{6}{@{}l}{\textbf{Scale}}\\
+Large-assembly / lightweight mode & \pfull & \phalf & \pnone & --- & ASM-08\\
+In-context editing & \pfull & \pfull & \phalf{} cross-document \code{SubShapeBinder} & --- & ASM-07\\
+Smart fasteners & \pfull & \phalf & \pnone & --- & ASM-09\\
+\end{longtable}
+\end{center}
+
+\paragraph{What the audit changes.}
+\begin{enumerate}
+  \item \textbf{Rebase first, then build.} Six rows close by rebasing (rigid groups, snapshots, exploded-view
+        controls, edit-joint menu, grounded locking, island drag), and upstream now handles generated arrays and
+        suppressed link elements. \eref{FND-03} moves ahead of \eref{ASM-03}.
+  \item \textbf{\eref{ASM-04} gets smaller.} The BOM already reads any property by column name, so P/N, Rev and
+        Material columns need only the PDM properties on each part (\eref{PDM-02}). Only \emph{Mass} needs new
+        code: a computed property kept current on recompute.
+  \item \textbf{\eref{ASM-05} becomes verification.} Rigid/flexible sub-assemblies exist
+        (\code{AssemblyLink.Rigid}); the epic checks them on \code{LE-02001} and fixes what breaks.
+  \item \textbf{\eref{ASM-03} keeps:} quick joint with type inference, pin-slot, mirror components, explicit
+        Planar naming, limits verified while dragging, as-built behaviour.
+  \item \textbf{Still entirely missing:} interference/clearance (\eref{ASM-06}), dynamic motion
+        (\eref{ASM-10}), lightweight mode (\eref{ASM-08}), smart fasteners (\eref{ASM-09}) --- unchanged.
+\end{enumerate}
+
+\paragraph{For the next GUI session} (steps 14--16 of section~\ref{sec:tonight}).
+\begin{description}[leftmargin=0pt]
+  \item[(a) Limits while dragging.] \emph{Dragging} is moving a part with the mouse in the 3D view after it is
+        jointed; the solver keeps the joints as you pull. Fusion and SolidWorks stop the part at a joint's limit.
+        FreeCAD passes the limits to the solver; whether a drag stops at them is what the step records.
+  \item[(b) Joints on pattern instances.] Required (answer, 19 Oct): a joint on a generated bolt must survive
+        a change of pattern count while that bolt still exists, and fail with a clear message when it goes.
+  \item[(c) Fixed joint placement.] A joint is made by picking a face or edge on each part; the solver then moves
+        one part so the two picks line up. ``Stays put'' asks whether a Fixed joint between two parts you have
+        already placed keeps them exactly where they are (Fusion calls this an \emph{as-built} joint), or snaps
+        the second part so the picks coincide. Both are useful; the step records which FreeCAD does today, and
+        \eref{ASM-03} adds the other.
+\end{description}
+
+\paragraph{Answered later on 19 Oct.} (a) Drag stays free; limits only when set in the joint, measured from a
+datum. (c) Joints keep moving one part to line up the picks; a checkbox keeps parts where they are. Both are built
+(section~\ref{sec:joints}); steps 14 and 16 now test them on screen.
+
+\paragraph{Decision (19 Oct).} Audit approved. Part properties must stay open to growth: they now come from a
+layered schema instead of code (section~\ref{sec:partprops}).

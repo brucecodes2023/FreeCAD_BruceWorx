@@ -1,0 +1,69 @@
+%======================================================================
+\subsection{Part properties that can grow (built 19 Oct 2026)}\label{sec:partprops}
+%======================================================================
+
+\textbf{Requirement.} ``Make it so we can expand properties of parts later.'' The properties every part carries
+(P/N, revision, description, material, mass, finish, vendor\ldots) are therefore data, not code: a list in
+JSON that is read in layers. Adding a property means adding one line to a layer file; FreeCAD, the BOM and the
+vault pick it up without a new build.
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+Layer (read in this order) & Holds\\
+\midrule
+1. Built in: \file{addons/BruceWorx/config/part\_properties.json} & The nine BruceWorx properties below. Ships with
+  the build; not edited by hand.\\
+2. Company or vault: e.g.\ \file{<vault>/part\_properties.json} & What your company adds: supplier, lead time,
+  RoHS, cost centre\ldots\\
+3. User: \file{\textasciitilde/.config/bruceworx/part\_properties.json} & Personal additions while trying something
+  out.\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Property & Type & BOM column & Comes from & Needed at\\
+\midrule
+\code{PartNumber} & text & \code{.PartNumber} & vault (read-only) & ---\\
+\code{Revision} & text & \code{.Revision} & vault (read-only) & ---\\
+\code{Description} & text & \code{.Description} & you & submit\\
+\code{ItemType} & choice & --- & you (part, assy, COTS, dwg) & ---\\
+\code{MaterialName} & text & \code{.MaterialName} & computed: bodies' material & submit\\
+\code{Finish} & text & \code{.Finish} & you & ---\\
+\code{Mass} & mass & \code{.Mass} & volume $\times$ density & ---\\
+\code{Vendor}, \code{VendorPart\-Number} & text & --- & you & ---\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Rules that keep it safe to grow.}
+\begin{itemize}[nosep]
+  \item A later layer may \emph{add} properties and may change an existing one's description, default, BOM flag
+        or the stage that needs it. It may \emph{not} change a property's type; that would make old files
+        unreadable, so the layer is refused with a message naming both files.
+  \item Renames are declared (\code{"renamed": \{"Old": "New"\}}); applying the schema moves the value.
+  \item Applying never deletes a property it does not know, so a file made with a bigger schema keeps its extra
+        values when a smaller one opens it.
+  \item A clash with a property FreeCAD already has is reported and left alone. The first real run found one:
+        \code{App::Part} already has a \code{Material} link, so ours is \code{MaterialName}.
+  \item ``Needed at'' feeds the lifecycle: \code{submit} lists what is still empty before a part can go to review.
+\end{itemize}
+
+\paragraph{BOM.} The Assembly BOM prints any property whose column is named \code{.Property}, so the schema
+just lists those names. Running it for real exposed an upstream bug: the BOM spreadsheet turned the text
+``01'' into the number 1, so revision 01 printed as ``1'' (and a P/N with leading zeros would lose them).
+\file{BomObject.cpp} now stores text values as text, the same way it already stores the Index column.
+
+\paragraph{Verified headless.} 12 unit tests (layers, renames, clashes, required stages, enum choices), and a
+FreeCAD run on an aluminium plate: mass 135\,g from its 50\,000\,mm$^3$ and Aluminum-6061-T6 density; material
+name taken from the body; the BOM row reads \code{LE-01-01001-001 | 01 | Base plate | Aluminum-6061-T6 | Clear
+anodise | 135 g}. The Assembly test suite still passes.
+
+\paragraph{Not yet.} A FreeCAD command and panel to apply and edit the properties (today: one line in the Python
+console, step 17 of the checklist), and recomputing Mass whenever the body changes (today: whenever the schema is
+applied). Both belong to \eref{ASM-04} and \eref{PDM-04}.

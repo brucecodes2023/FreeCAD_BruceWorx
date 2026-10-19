@@ -1,0 +1,168 @@
+%======================================================================
+\subsection{BW-PDM-01 --- Decision: a vault in a folder (19 Oct 2026)}\label{sec:pdm-decision}
+%======================================================================
+
+\textbf{Decision (your answer, 19 Oct).} The vault lives in any folder you choose and builds itself there; a ref
+file lets a reader view and drive it; the backend is that folder, most likely in iCloud, so it moves easily to
+another provider. Scope, also 19 Oct: \textbf{one FreeCAD at a time}; simultaneous edits from several instances are
+not part of this step.
+
+\paragraph{Layout.} A sync service makes conflict copies only when \emph{the same file} changes in two places,
+or changes again while an earlier version is still uploading. The vault is laid out so that never happens:
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+Path in the vault folder & Rule\\
+\midrule
+\file{<name>.bwvault} & The \textbf{ref file}. Identifies the vault (name, id, format version). Written once.
+  Today \code{bw-hooks vault status --vault <file>} opens it; the FreeCAD panel (\eref{PDM-04}) will open it
+  from File $\rightarrow$ Open or a double-click.\\
+\file{objects/ab/<sha256>.FCStd} & Every checked-in file version, named by its content hash. \textbf{Written once,
+  never changed}; written under a \file{.tmp} name (which iCloud does not sync) and renamed when complete; checked
+  against its hash when read.\\
+\file{journal/<user>@<mac>.jsonl} & Every action (create, check out, check in, submit, approve, ECR, ECO, BOM) as
+  one line. \textbf{Append-only, and only that user on that Mac writes it.} The state is rebuilt by replaying the
+  lines through the reference model (\eref{PDM-02}), so the lifecycle rules are identical.\\
+working folder (outside the vault) & Where FreeCAD opens and saves while you work. Check-in copies the file into
+  \file{objects/}; check-out copies the latest one out. Saving every few minutes never touches the vault.\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+If a sync service makes a copy anyway (iCloud \file{x 2.jsonl}, Dropbox \file{x (conflicted copy).jsonl},
+Syncthing \file{x.sync-conflict-\ldots}), the reader reads \emph{every} journal file and keeps each event once, so a
+copy neither loses nor doubles anything. A half-synced last line is skipped until the rest arrives; a journal line
+whose file has not downloaded yet is reported as ``not synced yet'' rather than an error. Moving to another
+provider means moving the folder.
+
+\paragraph{Built and tested headless.} \file{addons/BruceWorx/bruceworx/pdm\_folder.py} with the command line
+\code{bw-hooks vault} (actions \code{init}, \code{status}, \code{create}, \code{checkout}, \code{checkin},
+\code{undo-checkout}, \code{submit}, \code{approve}, \code{reject}, \code{fetch}). The 12 lifecycle
+and BOM contract tests of \eref{PDM-02} pass unchanged against a real folder, plus 17 folder tests: reopening rebuilds
+identical state; a refused action writes nothing; versions are never rewritten; the released revision freezes its
+file; damaged files are caught; three kinds of duplicate journal, an emptied journal, a half-written line, a missing
+download, and a duplicated ref file. The OpenAPI file stays as the list of operations; the folder vault
+implements them locally, and a server can implement them later.
+
+\subsubsection*{iCloud: what we found}
+
+\begin{description}[leftmargin=0pt]
+  \item[Your Documents folder is in iCloud.] Desktop \& Documents sync is on
+        (\file{\textasciitilde/Library/Mobile Documents/com\textasciitilde apple\textasciitilde CloudDocs/Documents} points
+        at \file{\textasciitilde/Documents}), so this repository is synced.
+  \item[Where the duplicates are.] 1\,488 numbered copies, \emph{all} in machine-written trees: build output
+        (\file{build/release/share}, \file{src}) and 21 inside \file{.git} (\file{HEAD 2}, \file{index 2},
+        \file{config 2}). None among the hand-edited sources. They arrived in bursts at clone and build times
+        (937 in one minute on 15 Oct). The copies hold older contents: iCloud kept the version it had while the
+        build was replacing thousands of files.
+  \item[Single-file saves did not reproduce it.] On 19 Oct, 120 rapid rewrites of three files (save by rename,
+        delete and recreate, overwrite in place) and three write passes over 3\,000 small files on this Mac produced no
+        copies. The trigger is heavy, fast, machine-made churn, which is exactly what the vault never does.
+  \item[Excluding a folder works on this Mac (macOS 27.2).] A folder whose name ends in \file{.nosync}, or one
+        carrying the attribute \code{com.apple.fileprovider.ignore\#P}, is reported by \code{fileproviderctl} as
+        \code{isExcludedFromSync = 1} and is not uploaded. Both are undocumented by Apple and could change; the
+        \file{.nosync} name is the more widely used.
+  \item[Storage optimisation.] With ``Optimise Mac Storage'' on, iCloud can evict files to save space; opening one
+        waits for a download and fails offline. For the vault folder, turn it off or use Finder's \emph{Keep
+        Downloaded} on the folder.
+  \item[Sharing needs a folder in iCloud Drive itself.] Apple does not share the Desktop or Documents folders
+        themselves; a shared folder has to sit in iCloud Drive. Folder sharing needs macOS 10.15.4, iOS 13.4 or
+        iCloud for Windows 11.1 or later.
+\end{description}
+
+\paragraph{Recommended setup (yours to apply).}
+\begin{enumerate}[nosep]
+  \item Put the vault in \textbf{iCloud Drive, not Documents}, e.g.\ \file{iCloud Drive/BruceWorx Vault/}. A vault in
+        Documents works for you alone, but a vault in iCloud Drive can be shared later without moving it.
+  \item Keep the working folder out of sync: \file{\textasciitilde/BruceWorx Work} (outside Documents), or a
+        \file{Work.nosync} folder.
+  \item Turn on \emph{Keep Downloaded} for the vault folder.
+  \item This repository: move it out of Documents (for example to \file{\textasciitilde/Developer}), or at least
+        exclude \file{build} and \file{.pixi}. Git inside iCloud is a known way to damage a repository, and its
+        \file{.git} already holds 21 duplicate files. Not changed here; it is your machine and your call.
+\end{enumerate}
+
+\paragraph{The repository, looked at again (19 Oct).} \code{git fsck} is clean, but the duplicates show the risk.
+\file{.git/HEAD 2} reads \code{ref: refs/heads/.invalid} and \file{.git/config 2} has lost the branch and submodule
+settings: both are the half-written state from the clone. Had iCloud settled those conflicts the other way, the
+repository would have lost track of its branch and of GitHub. Excluding only \file{build} and \file{.pixi} would
+leave this in place, and a branch switch or rebase rewrites thousands of source files at once, which is the same
+burst that made the copies.
+\begin{description}[leftmargin=0pt,nosep]
+  \item[Recommended.] Repository in \file{\textasciitilde/Developer}, outside iCloud. Its off-machine copy is GitHub
+        (a pushed work branch) plus Time Machine, both of which understand git. The vault, the one thing that needs
+        file sync, goes in \file{iCloud Drive/BruceWorx Vault/}, which is built for it.
+  \item[Not recommended.] Keeping the repository in Documents with \file{.git}, \file{build} and \file{.pixi}
+        excluded. The sources would still sync, but iCloud's copy would be sources without history, and the exclusion
+        relies on undocumented behaviour.
+\end{description}
+Moving needs a fresh \code{pixi install} and a full build, because both store absolute paths. Uncommitted work should
+be pushed to a branch first, so that it exists somewhere other than this Mac.
+
+\paragraph{Limits of this step.} One writer at a time. Journals are per user and Mac, so a second Mac or a second
+person can be added later, but two people editing at the same moment are not reconciled, and the check-out lock is a
+record in the journal, not a server lock. When a team needs that, the same operations move behind a server
+(option A below) without changing the files.
+
+%======================================================================
+\subsection{BW-PDM-01 --- Evaluation memo (19 Oct 2026, before the decision)}\label{sec:pdm-eval}
+%======================================================================
+
+\textbf{Status.} Kept for the record. Option C was scored as a \emph{plain} shared folder with FreeCAD files
+saved straight into it; the decision above is a folder vault built to avoid exactly the weaknesses scored here.
+
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\code}[1]{\texttt{#1}}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{3.3cm}@{}}
+\toprule
+Evidence & A. Ops is the PLM & B. Ops + Git LFS & C. Vault on a shared folder & D. Open-source PLM\\
+\midrule\endhead
+\bottomrule\endfoot
+Platform today & Ops = Next.js 16 on Railway (\code{bruceworks}); task API and auth are being built on branches (staging \code{/api/tasks} answers 401) & git-lfs 3.8 installed here; GitHub hosts the repos already & Folder on NAS or cloud drive & DocDokuPLM (Java), LibrePLM (Odoo; Windows-only connector), FreePDM (concept, no releases)\\
+File storage cost & Railway bucket: \$0.015/GB-month, S3 operations and bucket egress free & GitHub Free/Pro: 10\,GiB storage + 10\,GiB bandwidth per month, then \$0.07/GiB storage, \$0.0875/GiB bandwidth; Team: 250\,GiB each & Disk you own & Self-hosting + upkeep\\
+Locking & Server-side lease per item (contract: \code{/checkout}, \code{/checkin}) & \code{git lfs lock}: others cannot push a locked file & None real. \textbf{This repo already shows the failure:} iCloud left conflict copies (\file{BruceWorx 2.py}, \file{build 2.ninja}) instead of refusing & Built in\\
+Lifecycle and ECO & Exactly the reference model (\file{bruceworx/pdm.py}) & In Ops (same model); Git only versions files & Must be built in the FreeCAD client & Configurable; fit with Y14.35 + ECR/ECO unproven\\
+Multi-file assembly links & Client maps vault paths to a local workspace & Repo-relative paths work as they are & Share-relative paths & Needs a FreeCAD connector (none exists)\\
+BOM and where-used & Ops (graph queries) & Ops & Client index & Built in\\
+Agents / MCP & One API for FreeCAD, agents and the website & Git + Ops API & Weak & Varies\\
+Main risk & Effort: we own a vault & Two systems to keep in step; CAD users must use Git (or a client that hides it) & Silent duplicates, no server truth & Connector effort, maintenance, Windows bias\\
+\end{longtable}
+\end{center}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Criterion (proposed weight) & A & B & C & D\\
+\midrule
+Data integrity and locking (25\,\%) & 5 & 4 & 2 & 4\\
+Lifecycle fit, Y14.35 + ECR/ECO (20\,\%) & 5 & 3 & 3 & 3\\
+Multi-file references (15\,\%) & 4 & 5 & 4 & 2\\
+BOM and where-used (15\,\%) & 5 & 4 & 2 & 5\\
+Build effort, higher is less work (10\,\%) & 2 & 3 & 3 & 2\\
+Agent / API access (10\,\%) & 5 & 4 & 2 & 3\\
+Running cost (5\,\%) & 5 & 3 & 5 & 4\\
+\midrule
+\textbf{Weighted score} & \textbf{4.55} & \textbf{3.80} & \textbf{2.75} & \textbf{3.35}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Recommendation at the time.} Prototype \textbf{A} and \textbf{B} on \code{LE-02001}, then decide.
+Rule out \textbf{C}: its failure mode (silent duplicates) is already visible in this repository. Keep \textbf{D}
+as a fallback only, since none has a FreeCAD connector. Either A or B uses the same reference model and contract
+(\eref{PDM-02}), so no work is lost whichever wins.
+
+\paragraph{Prototype plan (not pursued after the decision).}
+\begin{description}[leftmargin=0pt]
+  \item[A.] A small service implementing \file{docs/pdm-openapi.yaml} over \file{bruceworx/pdm.py}, with files in
+        a Railway bucket and SHA-256 content addressing. Run the contract tests against it, then check in the
+        \code{LE-02001} tree and walk one ECO. Creating the bucket and service is an outward-facing change on your
+        Railway account, so it waits for you.
+  \item[B.] A private GitHub repository with LFS tracking for \code{*.FCStd} and locking turned on. Two clones
+        play two engineers; measure lock conflicts and the clone size after ten revisions of the pedestal.
+\end{description}

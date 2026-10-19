@@ -1,0 +1,186 @@
+%======================================================================
+\section{Summary}\label{sec:summary}
+%======================================================================
+
+\textbf{Goal.} BruceWorx (FreeCAD) reaches \emph{full parity with Fusion~360 and SolidWorks} across the
+whole product lifecycle, so that it can become the CAD system of record for BruceWorx products. That covers
+sketching and part modeling, assembly, simulation, ASME drawings, part and drawing management, and the
+files sent to the 3D printer, the CNC shop and the laser cutter. This replaces the earlier position
+(FC-T01) that FreeCAD only complements Fusion. The switch itself is the last milestone (M6) and is gated on the parity
+matrix in Appendix~\ref{app:parity}.
+
+\textbf{How this document was built.} The previous version of this file was a UI plan (Fusion-style
+layout, patterns, command line). It is now one chapter's worth of material inside a roadmap with
+\textbf{12 tracks and 81 epics}. The inputs were:
+\begin{itemize}
+  \item a five-round interview with you (18--19 Oct 2026), recorded in \S\ref{sec:decisions};
+  \item the BruceWorx Ops ``work'' list (191 items, marked \emph{sample data}), used as \emph{ideas only}.
+        Appendix~\ref{app:ideas} maps every idea group to the epic that absorbs it;
+  \item a capability survey of FreeCAD~1.1.4 in this repository (grep of the actual sources and headless
+        experiments), compared with Fusion~360 and SolidWorks~2026 public material;
+  \item the repository's merged work (\code{[BW]} commits \#3--\#9), which marks four epics done and five in
+        progress.
+\end{itemize}
+
+\textbf{Granularity.} The roadmap stops at \emph{epics}. Each epic has a scope, dependencies, an acceptance test and
+the ideas it absorbs. Tasks are broken down when an epic starts. \file{roadmap-epics.csv} carries the same
+81 epics for import into Ops. It is generated from \file{scripts/epics.py}, together with the tables in this
+document, so the two cannot drift.
+
+\textbf{Styling comes later.} The UI and styling track runs after M2. The figures here are working renders
+and will be regenerated for the new UI (\eref{UIX-09}).
+
+\subsection{Decisions from the interview}\label{sec:decisions}
+\begin{center}
+\small
+\begin{longtable}{@{}p{3.6cm}p{12.4cm}@{}}
+\toprule
+Topic & Decision\\
+\midrule\endhead
+End state & Full Fusion~360 / SolidWorks parity; FreeCAD becomes system of record at M6\\
+Ops task list & Ideas only; fresh IDs (\code{BW-\textit{TRK}-\textit{nn}}), origins kept in Appendix~\ref{app:ideas}\\
+Manufacturing & FDM printing (PETG/ABS), CNC machining, sheet metal / laser. Not injection molding\\
+First stage & Part and assembly modeling (main track)\\
+Track order & Modeling/assembly first; \textbf{PDM evaluation and drawings run in parallel from the start}\\
+Core modeling & Configurations; direct edit on imported STEP; parameters and top-down; threads and hardware\\
+Advanced modeling & Freeform / T-spline-like; surfacing parity; mesh $\rightarrow$ solid; frames / weldments\\
+File model & SolidWorks-style: \textbf{one file per part}, each with its own part number; assemblies link to files\\
+Assembly extras & In-context editing; large-assembly mode; smart fastener mating; dynamic motion study\\
+Simulation & Static + contact, modal and buckling, thermal and thermal stress. CFD later\\
+FDM materials & Isotropic + knockdown by default; orthotropic by print orientation available per study\\
+Drawing standard & ASME Y14.5, third-angle projection\\
+Drawings & Associative BOM + balloons; GD\&T and datums with model-driven callouts; revision table and
+  release; auto-generate drawing\\
+PDM home & \textbf{Evaluate first} (Ops as PLM vs Ops + Git LFS vs in-FreeCAD vault vs open-source PLM)\\
+Lifecycle & WIP $\rightarrow$ In Review $\rightarrow$ Released $\rightarrow$ Obsolete. Numeric pre-release
+  revisions (01, 02, \ldots), letter at first release (A), then ECR $\rightarrow$ ECO for every later letter
+  (ASME Y14.35 + SW-PDM practice)\\
+Revision vs P/N & Revision is metadata, separate from the part number; drawings and packages print
+  \code{P/N-REV}\\
+Team & 2--5 concurrent editors: check-out locks, review and approval\\
+Outputs & 3D-print prep; CNC CAM; sheet-metal flat DXF; release package\\
+Kept idea areas & AI / MCP assistant; KiCad bridge; robotics and drone kits; kernel study\\
+UI items & Patterns $\rightarrow$ Modeling; workspaces, panels, toolbar $\rightarrow$ UI track (later);
+  command line $\rightarrow$ Automation\\
+Upstream & \textbf{Track FreeCAD main} continuously (replaces ``stay on 1.1.4, rebase at 26.3'')\\
+Deliverable & This document plus \file{roadmap-epics.csv}; epics only\\
+Rule (standing) & Every feature is on by default, with an off switch on Preferences $\rightarrow$ BruceWorx\\
+\bottomrule
+\end{longtable}
+\end{center}
+
+\subsection{The lifecycle and where parity stands}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[>=Stealth,
+  st/.style={draw=bwblue!70,fill=bwblue!6,rounded corners=3pt,minimum width=2.15cm,minimum height=1.05cm,
+             align=center,font=\small},
+  lab/.style={font=\scriptsize\color{bwgrey},align=center}]
+\node[st] (s1) {Sketch \&\\part};
+\node[st,right=0.35cm of s1] (s2) {Assembly};
+\node[st,right=0.35cm of s2] (s3) {Simulate};
+\node[st,right=0.35cm of s3] (s4) {Drawings};
+\node[st,right=0.35cm of s4] (s5) {Manage \&\\release};
+\node[st,right=0.35cm of s5] (s6) {Make};
+\foreach \a/\b in {s1/s2,s2/s3,s3/s4,s4/s5,s5/s6} \draw[->,thick,bwblue!70] (\a) -- (\b);
+\draw[->,bwgrey,dashed] (s6.south) -- ++(0,-0.45) -| node[pos=0.25,below,lab]{ECR $\rightarrow$ ECO: the next revision re-enters the loop} (s1.south);
+\node[lab,above=0.12cm of s1] {MOD};
+\node[lab,above=0.12cm of s2] {ASM, ROB, ECD};
+\node[lab,above=0.12cm of s3] {SIM};
+\node[lab,above=0.12cm of s4] {DRW};
+\node[lab,above=0.12cm of s5] {PDM};
+\node[lab,above=0.12cm of s6] {MFG};
+\node[lab,below=0.95cm of s1] {\phalf};
+\node[lab,below=0.95cm of s2] {\phalf};
+\node[lab,below=0.95cm of s3] {\phalf};
+\node[lab,below=0.95cm of s4] {\phalf};
+\node[lab,below=0.95cm of s5] {\pnone};
+\node[lab,below=0.95cm of s6] {\phalf};
+\end{tikzpicture}
+\caption{Lifecycle stages, the tracks that serve them, and FreeCAD~1.1.4's overall standing against
+Fusion/SolidWorks (\pfull{} full, \phalf{} partial, \pnone{} none). Part and drawing management is the only
+stage with nothing in core FreeCAD. Foundation (FND), automation (AUT), UI (UIX) and kernel (KRN) cut across
+all stages.}
+\label{fig:lifecycle}
+\end{figure}
+
+The detailed matrix (Appendix~\ref{app:parity}, 71 capabilities) shows the pattern behind
+Figure~\ref{fig:lifecycle}:
+\begin{itemize}
+  \item \textbf{Strong already:} parametric solids, joints and kinematic simulation (Assembly in 1.1),
+        CalculiX/Elmer analysis types, drawing views, CAM and post-processors, 3MF and DXF export, Python.
+  \item \textbf{Partial:} patterns (with a bug, \S\ref{sec:bug}), parameters, direct edit (Defeaturing only),
+        surfacing, threads (drawing-side only), BOM (four automatic columns), GD\&T (symbol library, not
+        semantic), mesh $\rightarrow$ solid (faceted).
+  \item \textbf{Missing:} configurations, freeform, weldments, interference, smart fasteners, dynamic
+        motion, safety-factor and orthotropic results, auto drawings, \emph{all} of PDM, slicer handoff,
+        rendering, generative design.
+\end{itemize}
+
+\subsection{Milestones}
+
+Milestones are \emph{gates}, not calendar dates. Tracks run in parallel. A milestone closes when all of its
+epics pass acceptance on real BruceWorx parts. The Leonardo pedestal assembly \code{LE-02001} is the pilot
+throughout.
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}lp{4.3cm}X@{}}
+\toprule
+& Milestone & Exit criterion\\
+\midrule
+M0 & Foundation green & CI green on Linux and macOS arm64; tagged release; nightly rebase on upstream main; review fixes in\\
+M1 & Model it & LE-02001 modelled in FreeCAD from scratch: one file per part, patterns, configurations, threads, joints, interference-free\\
+M2 & Document \& release it & LE-02001 rev A released \emph{from FreeCAD}: ASME drawings, BOM, PDM lifecycle, release package\\
+M3 & Make it & Printed, machined and laser-cut parts made from FreeCAD outputs without touching Fusion\\
+M4 & Validate it & Static, modal, buckling and thermal studies on LE parts, verified against benchmarks\\
+M5 & Advanced & Surfacing, freeform, mesh $\rightarrow$ solid, in-context, large-assembly, dynamic motion, command line, assistant\\
+M6 & Switch system of record & Parity matrix met for the LE scope; Fusion data migrated; FC-T01 criteria satisfied\\
+UI & UI and styling pass & After M2: workspaces, panels, fresh visual design, regenerated figures\\
+BG & Background & Kernel study; runs at low priority throughout\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{figure}[ht]
+\centering
+\input{chapters/gen-swimlanes}
+\caption{Epics by track and milestone (number = epic, e.g.\ Part modeling \code{03} = \eref{BW-MOD-03}).
+Colour shows status: \textcolor{bwgreen}{\textbf{done}}, \textcolor{bworange}{\textbf{in progress}}, to do.
+Generated from \file{scripts/epics.py}.}
+\label{fig:swim}
+\end{figure}
+
+\subsection{Critical path}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[>=Stealth,x=2.7cm,y=-0.9cm,
+  e/.style={draw=black!30,rounded corners=2pt,fill=white,font=\scriptsize\ttfamily,minimum width=1.5cm,minimum height=0.55cm},
+  m/.style={draw=bwblue,fill=bwblue!10,rounded corners=2pt,font=\scriptsize\bfseries,minimum width=0.9cm,minimum height=0.55cm}]
+\node[e] (f6) at (0,0) {FND-06};  \node[e] (m1) at (1,0) {MOD-01};  \node[m] (M1) at (3,0) {M1};
+\node[e] (a1) at (0,1) {ASM-01};  \node[e] (a4) at (1,1) {ASM-04};  \node[e] (d2) at (2,1) {DRW-02};
+\node[e] (p6) at (2,2) {PDM-06};  \node[e] (o4) at (3,2) {MFG-04};
+\node[e] (p1) at (0,3) {PDM-01};  \node[e] (p4) at (1,3) {PDM-04};  \node[e] (p5) at (2,3) {PDM-05};
+\node[e] (p7) at (3,3) {PDM-07};  \node[m] (M2) at (4,3) {M2};
+\node[e] (p2) at (0,4) {PDM-02};  \node[e] (d5) at (2,4) {DRW-05};
+\node[e] (p3) at (1,5) {PDM-03};
+\node[e] (m5) at (0,6) {MOD-05};  \node[e] (d4) at (1,6) {DRW-04};  \node[e] (d6) at (2,6) {DRW-06};
+\draw[->] (f6) -- (m1); \draw[->] (m1) -- (M1); \draw[->] (a4) -- (M1);
+\draw[->] (a1) -- (a4); \draw[->] (a4) -- (d2); \draw[->] (a4) -- (p6); \draw[->] (p4) -- (p6);
+\draw[->] (p1) -- (p4); \draw[->] (p2) -- (p4); \draw[->] (p2) -- (p3); \draw[->] (p2) -- (d5);
+\draw[->] (p4) -- (p5); \draw[->] (p5) -- (p7); \draw[->] (d5) -- (p7); \draw[->] (p5) -- (o4);
+\draw[->] (p7) -- (M2); \draw[->] (o4) -- (M2);
+\draw[->] (m5) -- (d4); \draw[->] (d4) -- (d6);
+\end{tikzpicture}
+\caption{The dependencies that decide when FreeCAD can release a documented assembly (M2). The PDM
+evaluation (\eref{PDM-01}) and data model (\eref{PDM-02}) have no prerequisites, which is why they start on
+day one alongside modeling.}
+\label{fig:critical}
+\end{figure}
+
+\subsection{All epics}
+\small
+\input{chapters/gen-epics}
+\normalsize

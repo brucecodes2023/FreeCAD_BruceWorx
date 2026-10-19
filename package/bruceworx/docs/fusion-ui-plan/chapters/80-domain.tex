@@ -1,0 +1,90 @@
+%======================================================================
+\section{Track ROB --- Robotics and drone kits}\label{sec:rob}
+%======================================================================
+
+These epics turn the general tracks into BruceWorx's own product domain: the Leonardo robot, servo arms
+and quadcopters. Each one builds on a general epic, so nothing here forks the core design.
+
+\begin{epic}{ROB-01}{COTS library \& insert}{M1}{\stTodo}{FCB-P2-09/10, P2R-01..04}
+A COTS library folder with STEP models or datasheet envelopes plus per-part metadata: mass, CG offset,
+mount pattern, category, supplier P/N, and for motors, kv and maximum thrust. The first set: NEMA17, 2207/2306
+brushless motors, SG90/MG996R servos, 4-in-1 ESCs (30.5/20\,mm), 5'' props (disk envelope), and 608/6800
+bearings (parametric). The insert command has a category picker and places \textbf{mounting LCSs}, so
+\eref{ASM-03} quick joints and \eref{ASM-09} fasteners work immediately. COTS items get COTS P/Ns in PDM.
+\emph{Acceptance:} a NEMA17 and a 2207 motor are inserted and jointed by their mounting LCS.
+\end{epic}
+
+\begin{epic}{ROB-02}{Frame \& arm templates}{M3}{\stTodo}{FCB-P2R-05/06}
+A parametric quad X-frame (wheelbase, arm width, motor mount pattern) and a servo link/bracket (link length,
+servo size), built as \textbf{configurations} (\eref{MOD-03}) rather than separate spreadsheets.
+\emph{Acceptance:} the template regenerates cleanly for three wheelbases.
+\end{epic}
+
+\begin{epic}{ROB-03}{Mass, CG \& inertia report}{M1}{\stTodo}{FCB-P2R-07}
+Per-part mass from density or a COTS override; totals, CG and the inertia tensor; CSV export and a 3D CG
+marker. It builds on \eref{MOD-11}.
+\emph{Acceptance:} the X-frame example in Figure~\ref{fig:cg}: 388.1\,g, CG at $(2.45, 0, -2.73)$\,mm.
+\end{epic}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.55\linewidth]{fig/mass_cg.png}
+\caption{Quad X-frame: carbon plate and arms from density (1.6\,g/cm$^3$), four 32\,g motors and a 190\,g
+battery as COTS overrides. The battery is mounted 5\,mm forward, which puts the CG (red plumb line and
+marker) at $x=2.45$\,mm. That is exactly what the balance check in \eref{ROB-04} must flag.
+Computed in headless FreeCAD.}
+\label{fig:cg}
+\end{figure}
+
+\begin{epic}{ROB-04}{Drone balance \& thrust-to-weight}{M3}{\stTodo}{FCB-P2R-08}
+Compare the CG with the centroid of the motor axes, and report thrust-to-weight
+$T/W=\sum_i T_{\max,i}/(m g)$ from COTS data. Warn when the horizontal CG offset exceeds a fraction of the
+arm length, or $T/W<2$.
+\emph{Acceptance:} the check flags the offset battery in Figure~\ref{fig:cg}.
+\end{epic}
+
+\begin{epic}{ROB-05}{Kinematic chains \& joint drive}{M5}{\stTodo}{FCB-P2A-09/10}
+Build a link chain from revolute joints, show a joint table, read out end-effector forward kinematics, drive
+the chain from the table through the stock Simulation (servo-sweep presets), and export video.
+\emph{Acceptance:} the 2-DOF arm's FK matches a hand calculation.
+\end{epic}
+
+\paragraph{Theory: forward kinematics.} Each joint $i$ contributes a homogeneous transform
+$T_i(\theta_i)=\begin{pmatrix}R(\mathbf a_i,\theta_i)&\mathbf p_i-R(\mathbf a_i,\theta_i)\mathbf p_i\\
+\mathbf 0^{\!\top}&1\end{pmatrix}$, a rotation about its axis through $\mathbf p_i$ in the reference pose.
+The end-effector pose is the product
+\[
+  T_{\text{ee}}(\boldsymbol\theta)=T_1(\theta_1)\,T_2(\theta_2)\cdots T_n(\theta_n)\,T_{\text{ee}}(\mathbf 0),
+\]
+the product-of-exponentials form, which needs no Denavit--Hartenberg frames and can be read directly from the
+assembly's joints. For the planar 2-DOF arm, this reduces to
+$x=\ell_1\cos\theta_1+\ell_2\cos(\theta_1+\theta_2)$ and $y=\ell_1\sin\theta_1+\ell_2\sin(\theta_1+\theta_2)$,
+the acceptance check.
+
+%======================================================================
+\section{Track ECD --- ECAD bridge (KiCad)}\label{sec:ecd}
+%======================================================================
+
+\begin{epic}{ECD-01}{ECAD intake \& adopt-vs-build}{M1}{\stTodo}{FCB-P2E-01..04}
+Requirements intake from the ECAD owner (KiCad version, outline and keep-outs, direction of placement sync,
+STEP needs, sample board). Evaluate the KiCad StepUp add-on on current FreeCAD with a KiCad 9 board,
+including its AGPL licence and maintenance. Then a decision memo: adopt StepUp unmodified, or build a bridge on
+\code{kicad-cli} and the KiCad 9 IPC API. The Ops sample data shows this gate as done, but the result isn't
+recorded (open question).
+\end{epic}
+
+\begin{epic}{ECD-02}{Board STEP into assembly}{M3}{\stTodo}{FCB-P2E-05}
+Export with \code{kicad-cli pcb export step}, and insert into the assembly with an LCS at the board origin, so
+the board joints like any component.
+\end{epic}
+
+\begin{epic}{ECD-03}{Board outline round-trip}{M3}{\stTodo}{FCB-P2E-06, P2E-09}
+Pull \code{Edge.Cuts} into a Sketcher sketch and push edits back to \code{.kicad\_pcb}.
+\emph{Acceptance:} the round-trip outline delta is below 0.01\,mm on the sample board.
+\end{epic}
+
+\begin{epic}{ECD-04}{Placement sync \& enclosure fit}{M3}{\stTodo}{FCB-P2E-07/08}
+Push connector and mounting-hole positions from MCAD to ECAD and back. Check board against housing with the
+interference command (\eref{ASM-06}).
+\emph{Acceptance:} the fit check flags a connector moved into a wall.
+\end{epic}

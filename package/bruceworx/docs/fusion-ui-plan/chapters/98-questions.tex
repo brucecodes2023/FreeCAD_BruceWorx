@@ -1,0 +1,39 @@
+%======================================================================
+\section{Open questions}\label{sec:questions}
+%======================================================================
+
+These are decisions the roadmap cannot make for you. None of them blocks M0. Each lists the epic it gates.
+
+\begin{enumerate}[label=Q\arabic*.,ref=Q\arabic*]
+  \item\label{q:fct01} \textbf{FC-T01 switch criteria} (\eref{PDM-08}, M6). The Ops data shows the gate
+        ``Bruce sets FC-T01 switch criteria'' as done, but the criteria aren't recorded. What are they? They
+        become M6's checklist and the scope filter on the parity matrix.
+  \item\label{q:cfgpn} \textbf{Part numbers for configurations} (\eref{MOD-03}). Proposed: each configuration
+        that is manufactured separately gets its own P/N (\S\ref{sec:mod}). Or should variants share a P/N with
+        a dash suffix?
+  \item\label{q:dwgpn} \textbf{Drawing numbers} (\eref{PDM-02}, \eref{DRW-01}). Is a drawing its own item with
+        a document-type code (\code{\{DT\}}) different from its part, or does it share the part's P/N? Their
+        revisions move together either way.
+  \item\label{q:cnc} \textbf{CNC machine and controller} (\eref{MFG-02}). Which machine(s) and controller
+        (GRBL, LinuxCNC, Haas, \ldots)? This picks the post-processor and the tool library.
+  \item\label{q:openscad} \textbf{OpenSCAD binary} (\eref{AUT-05}). Ship the official OpenSCAD app (GPL-2, as a
+        separate executable) in the DMG, or require a user install with a hint?
+  \item\label{q:compute} \textbf{Pattern Compute: Adjust} (\eref{MOD-01}). OK to ship \emph{Identical} only
+        and add \emph{Adjust} later?
+  \item \textbf{Joints on patterned components} (\eref{MOD-01}). Leave instances free, like Fusion, or
+        copy the seed's joints?
+  \item \textbf{Upstreaming} (\eref{FND-03}). With upstream main tracked continuously, should generic fixes
+        (like \code{Spacings2}) and small core patches go upstream by default to shrink the conflict budget?
+  \item \textbf{Fastener library} (\eref{MOD-05}). Adopt the FreeCAD Fasteners add-on if its licence fits, or
+        build on the COTS schema only?
+  \item \textbf{PDM evaluation weights} (\eref{PDM-01}). Confirm or change the proposed weights in
+        \S\ref{sec:pdm}.
+  \item \textbf{ECAD bridge decision} (\eref{ECD-01}). Was ``adopt StepUp vs build'' decided (it shows as done in the
+        sample data)? If so, which way?
+  \item \textbf{FDM knockdown factors} (\eref{SIM-03}). Run coupon tests on our printers and materials, or start
+        from published values?
+  \item \textbf{Command aliases} (\eref{AUT-05}). Start from AutoCAD names (\code{EXT}, \code{F}, \code{AR}) or
+        Fusion's single keys (\code{E}, \code{F}, \code{H})?
+  \item \textbf{Distribution} (\eref{FND-02}). Will anyone outside the team install builds before M6? If so,
+        signing and notarisation move into M0.
+\end{enumerate}

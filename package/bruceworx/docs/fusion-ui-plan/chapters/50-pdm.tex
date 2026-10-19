@@ -1,0 +1,152 @@
+%======================================================================
+\section{Track PDM --- Part and drawing management}\label{sec:pdm}
+%======================================================================
+
+FreeCAD has no PDM: no vault, check-out, revision, lifecycle, where-used or release. Fusion has
+versions in its cloud plus the Manage extension (part numbering, lifecycle, change orders, BOM release).
+SolidWorks has PDM Standard and Professional (vault, check-in/out, workflows, revisions, BOMs). Searches
+for an open-source PDM with a working FreeCAD check-in workflow found only early or narrow projects
+(FreePDM, a concept; a small Taack-based PLM; LibrePLM, with a Windows-only connector). This track
+therefore \textbf{starts with an evaluation}, as decided, and specifies the data model and lifecycle
+independently of where they end up stored.
+
+\begin{epic}{PDM-01}{PDM evaluation \& decision}{M2}{\stDone}{(new)}
+Compare four architectures against weighted criteria and record the decision. \textbf{Decided 19 Oct 2026
+(\S\ref{sec:pdm-decision}):} a vault in any folder, iCloud Drive first, opened through a \file{.bwvault} ref file;
+one writer at a time for now. The folder layout is designed so a sync service has nothing to conflict over.
+\end{epic}
+
+\input{chapters/52-pdm-eval}
+
+\subsection{Data model}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[>=Stealth,
+  ent/.style={draw=bwblue!70,fill=bwblue!5,rounded corners=2pt,align=left,font=\scriptsize,inner sep=4pt,text width=3.5cm},
+  rel/.style={font=\tiny\color{bwgrey}}]
+\node[ent] (item) at (0,0) {\textbf{Item}\\P/N (permanent)\\type: part, assembly, drawing, COTS\\description, program};
+\node[ent] (rev) at (5.0,0) {\textbf{Revision}\\code: 01, 02, \ldots, A, B, \ldots\\state: WIP, Review, Released, Obsolete\\released by, date};
+\node[ent] (fv) at (10.0,0) {\textbf{FileVersion}\\content SHA-256, size\\checked in by, time\\lock holder};
+\node[ent] (bom) at (5.0,-2.9) {\textbf{BOM line}\\parent revision $\rightarrow$ child item\\qty, find no., configuration\\effectivity: latest released};
+\node[ent] (eco) at (10.0,-2.9) {\textbf{ECO}\\affected revisions\\approvals, release};
+\node[ent] (ecr) at (10.0,-5.1) {\textbf{ECR}\\problem, requester\\affected items, status};
+\draw[->] (item) -- node[rel,above]{has 1..*} (rev);
+\draw[->] (rev) -- node[rel,above]{has 1..*} (fv);
+\draw[->] (rev) -- node[rel,right]{parent} (bom);
+\draw[->] (bom.west) -| node[rel,pos=0.25,below]{child} (item.south);
+\draw[->] (ecr) -- node[rel,right]{approved $\Rightarrow$ opens} (eco);
+\draw[->] (eco.north west) -- node[rel,right,pos=0.35]{creates, releases} (rev.south east);
+\end{tikzpicture}
+\caption{PDM data model. The P/N belongs to the \emph{Item} and never changes. Revisions carry the state.
+File versions are content-addressed. BOM lines point from a parent \emph{revision} to a child \emph{item},
+so a released assembly picks up the child's latest released revision unless it is pinned.}
+\label{fig:pdm-model}
+\end{figure}
+
+\begin{epic}{PDM-02}{Data model \& lifecycle spec}{M2}{\stProg}{(new)}
+Specify Figure~\ref{fig:pdm-model} and the lifecycle in Figure~\ref{fig:lifecycle-sm} as an API contract
+(OpenAPI) that any storage option implements. A drawing is its own \emph{Item}, numbered like its part, whose
+revision moves \emph{with} the part's: one ECO releases both.
+\textbf{Drafted 19 Oct 2026:} reference model \file{addons/BruceWorx/bruceworx/pdm.py} (revision sequences,
+lifecycle, ECR/ECO, drawing coupling, BOM explosion, where-used, cycle rejection) with 18 contract tests in
+\file{tests/test\_pdm.py}, and the API contract \file{addons/BruceWorx/docs/pdm-openapi.yaml} (17 endpoints,
+including check-in/out and locks).
+\emph{Acceptance:} spec approved; every transition in Figure~\ref{fig:lifecycle-sm} has an endpoint and a test.
+\end{epic}
+
+\subsection{Lifecycle and revisions}\label{sec:lifecycle}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[>=Stealth,x=3.6cm,y=-2.2cm,
+  s/.style={draw,rounded corners=3pt,minimum width=2.3cm,minimum height=0.85cm,align=center,font=\small},
+  wip/.style={s,draw=bworange,fill=bworange!8},rv/.style={s,draw=bwblue,fill=bwblue!8},
+  rl/.style={s,draw=bwgreen,fill=bwgreen!10},ob/.style={s,draw=black!40,fill=black!5},
+  ch/.style={s,draw=bwred,fill=bwred!6},
+  t/.style={font=\scriptsize,align=center}]
+\node[wip] (wip) at (0,0) {WIP\\\scriptsize rev 01, 02, \ldots};
+\node[rv]  (rv)  at (1,0) {In Review};
+\node[rl]  (rl)  at (2,0) {Released\\\scriptsize rev A};
+\node[ob]  (ob)  at (3,0) {Obsolete};
+\node[ch]  (ecr) at (2.9,1) {ECR};
+\node[ch]  (eco) at (1.9,1) {ECO\\\scriptsize work rev B};
+\node[rv]  (rv2) at (0.9,1) {In Review};
+\draw[->] (wip) -- node[t,below]{submit} (rv);
+\draw[->] (rv.north) to[bend right=35] node[t,above]{reject: next numeric rev} (wip.north);
+\draw[->] (rv) -- node[t,above]{approve} (rl);
+\draw[->] (rl) -- node[t,above]{retire} (ob);
+\draw[->] ([xshift=0.6cm]rl.south) -- ++(0,0.22) -| node[t,pos=0.25,above]{problem reported} (ecr.north);
+\draw[->] (ecr) -- node[t,above]{approved} (eco);
+\draw[->] (eco) -- node[t,above]{submit} (rv2);
+\draw[->] (rv2.west) -- ++(-0.1,0) |- node[t,pos=0.72,below]{approve: rev B released, rev A superseded} ($([xshift=-0.5cm]rl.south)+(0,-0.45cm)$) -- ([xshift=-0.5cm]rl.south);
+\end{tikzpicture}
+\caption{Lifecycle. Pre-release revisions are numeric (ASME Y14.35 practice) and every review rejection
+increments them. The first approval releases rev A. After that, letters change only through an approved ECR
+$\rightarrow$ ECO, and released files are read-only. ``Superseded'' is a flag on the old letter revision, not a state.}
+\label{fig:lifecycle-sm}
+\end{figure}
+
+\paragraph{Theory: revision sequences.} Released revisions use letters with I, O, Q, S, X and Z skipped,
+as ASME Y14.35 recommends, because they read as digits. Writing the 20 usable letters as an alphabet
+$\Sigma$, the sequence is base-20 with no zero digit: A, B, \ldots, Y, AA, AB, \ldots. The successor
+function increments the last letter and carries. Pre-release revisions are zero-padded integers. The drawing
+prints \code{P/N-REV}, for example \code{LE-01-01001-001-02} or \code{LE-01-01001-001-A}, while the P/N
+stored on the item never includes the revision (decided).
+
+\paragraph{Theory: why pessimistic locking.} \code{.FCStd} files are zip archives of XML and B-rep data. Two
+concurrent edits cannot be merged, so optimistic concurrency, where both editors save and a merge resolves
+it, would always end with one person's work discarded. With 2--5 editors, \emph{pessimistic} locking (check-out
+grants an exclusive lock; check-in releases it) costs little waiting and avoids lost work. Locks carry a lease,
+and an administrator can break a stale one. A file version is identified by its SHA-256, so an unchanged
+check-in is a no-op and duplicate content is stored once.
+
+\begin{epic}{PDM-03}{Numbering service}{M2}{\stProg}{FCB-P2-03/04/05}
+The local-JSON numbering source and macro are merged (\#5). The format is
+\code{\{PROG\}-\{DT\}-\{PPPPP\}-\{SSS\}-\{REV\}}. Under the decision, \code{\{REV\}} moves out of the P/N into
+revision metadata, and label and file names drop it. Then the Ops API reader (stubbed as
+\code{OpsApiNumberSource}) allocates numbers centrally, with a bearer token from \code{BW\_OPS\_TOKEN}.
+\emph{Acceptance:} P/Ns come from Ops; existing LE numbers migrate with only the revision suffix removed.
+\end{epic}
+
+\begin{epic}{PDM-04}{FreeCAD vault client}{M2}{\stTodo}{(new)}
+A Vault panel and tree overlays: \emph{checked in}, \emph{checked out by me}, \emph{locked by someone
+else}, \emph{newer version available}. Commands: check out, check in (with comment), undo check-out, get
+latest, and get a specific revision. Opening a locked file opens it read-only. Saving a file you have not
+checked out offers to check it out first. Assembly links resolve through the vault, so \code{LE-02001}
+opens identically on every machine.
+Works over the folder vault (\S\ref{sec:pdm-decision}); the command-line \code{vault} commands already
+drive it.
+\emph{Acceptance:} a check-out/check-in round trip of \code{LE-02001} from an iCloud Drive vault inside FreeCAD;
+the status icons are always correct. Locking between several users is a later step.
+\end{epic}
+
+\begin{epic}{PDM-05}{Lifecycle \& change control}{M2}{\stTodo}{(new)}
+Implements Figure~\ref{fig:lifecycle-sm}, with approvals in Ops. Release freezes files read-only, publishes
+drawings (\eref{DRW-08}), and builds the release package (\eref{MFG-04}). The ECR captures the problem;
+the ECO groups affected items, opens their next letter revision in WIP, and releases them together.
+\emph{Acceptance:} rev A $\rightarrow$ ECR $\rightarrow$ ECO $\rightarrow$ rev B round trip on \code{LE-01001}
+and its drawing.
+\end{epic}
+
+\begin{epic}{PDM-06}{BOM sync \& where-used}{M2}{\stTodo}{(new)}
+On check-in of an assembly, push its BOM (\eref{ASM-04}) to Ops as BOM lines. Where-used is the reverse
+traversal from \S\ref{sec:asm}. Released assemblies resolve children to the latest \emph{released}
+revision. A WIP assembly may also use WIP children, and is flagged when it does.
+\emph{Acceptance:} where-used of a bolt lists every assembly revision that uses it.
+\end{epic}
+
+\begin{epic}{PDM-07}{Pilot: LE-02001 \& CAD register}{M2}{\stTodo}{FCB-P2-15/16/17/18, P2-21}
+The first real release: build the pedestal tree (\code{LE-01001} $\rightarrow$ \code{LE-01010}
+$\rightarrow$ \code{LE-01009} $\rightarrow$ \code{LE-01011} $\rightarrow$ \code{LE-01002}), link the CAD
+register in the BruceWorx app, run the design-freeze checklist and validation macro, and release rev A with
+drawings and package.
+\emph{Acceptance:} \code{LE-02001} rev A released entirely from FreeCAD.
+\end{epic}
+
+\begin{epic}{PDM-08}{Migration from Fusion}{M6}{\stTodo}{FC-T01, FCB-P2-22}
+Bulk-import Fusion exports (STEP, plus drawings as PDF) into the vault with P/N and revision mapping,
+re-establish assembly structure, and record provenance. The FC-T01 switch criteria become the checklist for
+M6.
+\emph{Acceptance:} every LE part imported, numbered and released; FC-T01 criteria met.
+\end{epic}

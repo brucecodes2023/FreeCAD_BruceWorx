@@ -1,0 +1,170 @@
+%======================================================================
+\section{Track DRW --- Drawings (ASME Y14.5, third-angle)}\label{sec:drw}
+%======================================================================
+
+TechDraw already covers projection groups, section, detail and broken views, dimensions (including chain
+and coordinate extensions), balloons, weld and surface-finish symbols, template autofill, and
+PDF/DXF export. The gaps are semantic. GD\&T frames are SVG symbols, not data. The BOM table is a
+spreadsheet view. Thread callouts are drawn on the view, not read from the model. Nothing knows about
+revisions. This track runs \textbf{in parallel from the start} and closes at M2.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm,font=\tiny,line cap=round]
+% sheet border
+\draw[line width=0.8pt] (0,0) rectangle (16,10.4);
+\draw (0.3,0.3) rectangle (15.7,10.1);
+% revision block, top right
+\draw (9.0,9.25) rectangle (15.7,10.1); \draw (9.0,9.68) -- (15.7,9.68);
+\foreach \x in {9.6,12.4,14.2} \draw (\x,9.25) -- (\x,10.1);
+\node at (9.3,9.89) {\bfseries REV}; \node at (11.0,9.89) {\bfseries DESCRIPTION}; \node at (13.3,9.89) {\bfseries DATE}; \node at (14.95,9.89) {\bfseries APPR};
+\node at (9.3,9.46) {02}; \node at (11.0,9.46) {WIP: review comments}; \node at (13.3,9.46) {2026-10-19}; \node at (14.95,9.46) {---};
+% PRELIMINARY stamp
+\node[rotate=12,text=bwred!70,font=\bfseries\normalsize,draw=bwred!70,line width=0.8pt,inner sep=3pt] at (4.6,9.0) {PRELIMINARY --- REV 02};
+% third-angle views: front bottom-left, top above it, right view to its right
+\draw[line width=0.6pt] (1.2,1.6) rectangle (5.2,3.4);
+\draw[line width=0.6pt] (1.2,4.4) rectangle (5.2,6.4);
+\draw[line width=0.6pt] (6.2,1.6) rectangle (8.2,3.4);
+\draw[dashed] (1.9,1.6) -- (1.9,3.4); \draw[dashed] (2.5,1.6) -- (2.5,3.4);
+\draw (2.2,5.4) circle (0.3); \draw (4.2,5.4) circle (0.3);
+\draw[dash pattern=on 4pt off 1pt on 1pt off 1pt] (2.2,4.9)--(2.2,5.9) (1.7,5.4)--(2.7,5.4);
+% dimensions
+\draw[<->,>=Stealth] (1.2,1.15) -- node[below]{80} (5.2,1.15);
+\draw[<->,>=Stealth] (8.45,1.6) -- node[right]{20} (8.45,3.4);
+% datum A on the top face of the front view
+\draw[fill=black] (4.6,3.4) -- ++(-0.12,0.22) -- ++(0.24,0) -- cycle; \draw (4.6,3.62) -- (4.6,3.8);
+\node[draw,inner sep=1.5pt] at (4.6,3.98) {A};
+% hole callout and thread note
+\draw[->,>=Stealth] (3.0,7.0) -- (2.4,5.65);
+\node[anchor=west,align=left] at (3.0,7.15) {2X $\varnothing$6.6 THRU\\ $\sqcup\,\varnothing$11 $\downarrow$6.5};
+\node[anchor=west,align=left] at (5.6,6.1) {M3$\times$0.5 - 6H $\downarrow$8\\ (from cosmetic thread)};
+% feature control frame
+\begin{scope}[shift={(5.6,4.6)}]
+\draw (0,0) rectangle (2.9,0.42);
+\draw (0.45,0)--(0.45,0.42) (1.75,0)--(1.75,0.42) (2.15,0)--(2.15,0.42) (2.55,0)--(2.55,0.42);
+\node at (0.22,0.21) {$\oplus$}; \node at (1.1,0.21) {$\varnothing$0.2 \textcircled{\tiny M}};
+\node at (1.95,0.21) {A}; \node at (2.35,0.21) {B}; \node at (2.73,0.21) {C};
+\end{scope}
+% isometric with balloons, right middle
+\draw[line width=0.5pt] (10.4,6.9) -- (12.2,7.6) -- (13.7,7.0) -- (11.9,6.3) -- cycle;
+\draw[line width=0.5pt] (10.4,6.9) -- (10.4,6.2) -- (11.9,5.6) -- (13.7,6.3) -- (13.7,7.0);
+\draw (11.9,6.3)--(11.9,5.6);
+\foreach \n/\x/\y/\tx/\ty in {1/11.0/6.8/10.1/8.0, 2/12.7/6.9/13.3/8.1, 3/12.4/6.0/14.4/5.4}{
+  \draw (\x,\y) -- (\tx,\ty); \node[circle,draw,fill=white,inner sep=1pt,minimum size=9pt] at (\tx,\ty) {\n};}
+% parts list (ASME Y14.34) above the title block
+\begin{scope}[shift={(9.0,2.55)}]
+\draw (0,0) rectangle (6.7,2.08);
+\foreach \y in {0.52,1.04,1.56} \draw (0,\y)--(6.7,\y);
+\foreach \x in {0.6,3.1,3.65,6.05} \draw (\x,0)--(\x,2.08);
+\node at (0.3,1.82) {\bfseries NO.}; \node at (1.85,1.82) {\bfseries PART NUMBER}; \node at (3.375,1.82) {\bfseries REV};
+\node at (4.85,1.82) {\bfseries DESCRIPTION}; \node at (6.375,1.82) {\bfseries QTY};
+\node at (0.3,1.30) {1}; \node at (1.85,1.30) {LE-01-01001-001}; \node at (3.375,1.30) {A}; \node at (4.85,1.30) {BASE PLATE}; \node at (6.375,1.30) {1};
+\node at (0.3,0.78) {2}; \node at (1.85,0.78) {LE-01-01009-001}; \node at (3.375,0.78) {B}; \node at (4.85,0.78) {RISER}; \node at (6.375,0.78) {1};
+\node at (0.3,0.26) {3}; \node at (1.85,0.26) {ISO4762-M5x20}; \node at (3.375,0.26) {--}; \node at (4.85,0.26) {SHCS M5$\times$20}; \node at (6.375,0.26) {4};
+\end{scope}
+% title block, bottom right
+\begin{scope}[shift={(9.0,0.3)}]
+\draw (0,0) rectangle (6.7,2.25);
+\draw (0,0.75)--(6.7,0.75) (0,1.65)--(6.7,1.65) (3.3,0)--(3.3,1.65) (4.8,0)--(4.8,0.75);
+\node[anchor=west] at (0.1,1.95) {\bfseries BRUCEWORX \quad LE-02001 PEDESTAL ASSY};
+\node[anchor=west,align=left] at (0.1,1.2) {DWG NO / REV\\\bfseries LE-02-02001-001-02};
+\node[anchor=west,align=left] at (3.4,1.2) {MATERIAL / FINISH\\ PETG, 0.2 mm layers};
+\node[anchor=west,align=left] at (0.1,0.37) {TOL.\ UNLESS NOTED (MM):\\ $\pm$0.2; ANGLES $\pm$1$^\circ$};
+\node[anchor=west,align=left] at (3.4,0.37) {SIZE B\\ SCALE 1:2};
+\node[anchor=west,align=left] at (4.9,0.37) {MASS 412 g\\ SHEET 1/2};
+\end{scope}
+% third-angle projection symbol, left of the title block
+\begin{scope}[shift={(7.75,0.55)}]
+\draw (0,0) -- (0.4,0.13) -- (0.4,0.42) -- (0,0.55) -- cycle; \draw (0.7,0.275) circle (0.12); \draw (0.7,0.275) circle (0.26);
+\end{scope}
+\end{tikzpicture}
+\caption{Target ASME B-size sheet (schematic). Third-angle views and symbol; hole and thread callouts
+generated from model data; a semantic feature control frame against datums A--C; balloons tied to the
+parts list; revision block and PRELIMINARY stamp driven by the PDM state (numeric rev 02 = not yet
+released); title block filled from item metadata, printed as \code{P/N-REV}.}
+\label{fig:sheet-mock}
+\end{figure}
+
+\begin{epic}{DRW-01}{ASME templates \& title block}{M2}{\stTodo}{FCB-P2-06/07/08}
+ANSI A--D sheet templates with the third-angle symbol, a general tolerance block, and fields for P/N, revision,
+title, material, finish, mass, scale, sheet and approvals. Fields fill from PDM item metadata
+(\eref{PDM-02}) through TechDraw's existing autofill, which is extended for the new keys. The \code{LE-01001}
+sample drawing (overall size, thickness, print Z, PETG/ABS, heat-set inserts) is the first user.
+\emph{Acceptance:} the \code{LE-01001} drawing fills every field automatically.
+\end{epic}
+
+\begin{epic}{DRW-02}{Associative BOM table \& balloons}{M2}{\stTodo}{FCB-P2A-06}
+A native TechDraw \textbf{parts list} object (ASME Y14.34 columns: item, P/N, rev, description,
+material, qty) bound to the assembly BOM (\eref{ASM-04}), replacing the spreadsheet view. Balloons bind to
+\emph{occurrences}, so their numbers follow the item numbers when rows are added, sorted or removed.
+\emph{Acceptance:} adding a part updates the table and keeps every balloon number correct.
+\end{epic}
+
+\begin{epic}{DRW-03}{GD\&T \& datums (ASME Y14.5)}{M2}{\stTodo}{(new)}
+Feature control frames, datum feature symbols, datum targets and basic dimensions as \textbf{objects}
+that reference model geometry. They are validated (every referenced datum exists, modifiers are legal for the
+characteristic), and they survive model edits through TNP-safe references.
+\emph{Acceptance:} a frame referencing a missing datum is flagged; frames survive a model change.
+\end{epic}
+
+\paragraph{Theory: a feature control frame is a sentence.} Y14.5 frames follow a small grammar:
+\begin{lstlisting}
+fcf        := characteristic zone ( '|' datumRef ){0,3}
+zone       := [ 'DIA' | 'SDIA' ] value [ material ] [ 'P' value ] [ 'F' | 'ST' | 'T' ]
+material   := '(M)' | '(L)'          ; MMC / LMC (RFS is the default)
+datumRef   := letter [ material ] ( '-' letter [ material ] )*
+\end{lstlisting}
+Validation rules: form tolerances (flatness, straightness, circularity, cylindricity) take \emph{no} datums;
+orientation tolerances need at least one; position needs datums unless the frame is a pattern-locating tolerance
+that is explicitly datum-free; and the material modifier \textcircled{\small M} applies only to features of size. Storing the
+frame as a parsed structure, not as text, is what makes these checks possible. It also allows STEP AP242
+semantic PMI export later.
+
+\begin{epic}{DRW-04}{Hole \& thread callouts from the model}{M2}{\stTodo}{(new)}
+Generate callout text from \code{Hole} features and cosmetic threads (\eref{MOD-05}): quantity, diameter,
+THRU or depth, counterbore $\sqcup$, countersink $\vee$, thread size, pitch, class and depth. Callouts update
+when the hole changes. Hole tables (ordinate positions) come from the same data.
+\emph{Acceptance:} callouts update when the hole spec changes.
+\end{epic}
+
+\begin{epic}{DRW-05}{Revision table \& release stamp}{M2}{\stTodo}{(new)}
+The revision block is filled from the item's change history (\eref{PDM-05}): ECO number, description, date and
+approver per letter revision. A \textbf{PRELIMINARY} stamp shows while the revision is numeric (01, 02, \ldots).
+The title block prints \code{P/N-REV}.
+\emph{Acceptance:} releasing rev A removes the stamp and adds the revision row.
+\end{epic}
+
+\begin{epic}{DRW-06}{Auto-generate drawing}{M2}{\stTodo}{(new)}
+One command makes a first-pass drawing: sheet size and scale, the standard views, an isometric, hole callouts,
+and the key dimensions. The user then edits it. SolidWorks 2026 ships an equivalent, AutoGenerate Drawing.
+\emph{Acceptance:} on the corpus parts, a reviewer keeps at least 70\,\% of the generated dimensions.
+\end{epic}
+
+\paragraph{Theory: choosing views and dimensions.}
+\begin{enumerate}
+  \item \textbf{Front view.} Among the six principal directions $\pm\mathbf e_x,\pm\mathbf e_y,\pm\mathbf e_z$
+        of the part's oriented bounding box, choose the one maximising
+        $\alpha\,A_{\text{proj}}+\beta\,N_{\text{visible edges}}-\gamma\,N_{\text{hidden edges}}$, with
+        ties broken by the longest extent horizontal. The other views follow from third-angle
+        projection: top above, right to the right.
+  \item \textbf{Needed views.} Add a view only if it shows features (holes, steps) whose axis is
+        perpendicular to it and which no earlier view shows true size. A part with all holes on one axis gets
+        two views, not three.
+  \item \textbf{Scale and sheet.} The smallest standard sheet (A--D) and the largest standard scale such that
+        the view group fits within 80\,\% of the drawing area.
+  \item \textbf{Dimensions.} Overall extents first, then hole positions as ordinate or baseline dimensions
+        from the datum features (the largest planar faces, in order), then sizes through callouts. Nothing is
+        dimensioned twice: each model parameter maps to at most one dimension.
+\end{enumerate}
+
+\begin{epic}{DRW-07}{Sheet-metal flat \& cut-list drawings}{M3}{\stTodo}{(new)}
+A flat-pattern view with bend lines, direction and angle, a bend table (bend, direction, angle, radius,
+K-factor), and the weldment cut-list table from \eref{MOD-07}.
+\emph{Acceptance:} the bracket drawing in Figure~\ref{fig:sheet} shows the flat and the table.
+\end{epic}
+
+\begin{epic}{DRW-08}{Publish PDF/DXF}{M2}{\stTodo}{(new)}
+Vector PDF and DXF export of every drawing in a BOM, with file names \code{P/N-REV.pdf}. It feeds the
+release package (\eref{MFG-04}).
+\emph{Acceptance:} one command publishes every drawing of \code{LE-02001}.
+\end{epic}

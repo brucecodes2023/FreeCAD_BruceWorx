@@ -1,0 +1,24 @@
+%======================================================================
+\section{Track KRN --- Kernel study (background)}\label{sec:krn}
+%======================================================================
+
+A study, not a build. It answers what it would cost to put FreeCAD on a different geometry kernel, without
+blocking any parity work.
+
+\begin{epic}{KRN-01}{OCCT coupling survey}{BG}{\stTodo}{FCB-P3-01..06}
+Script-count OCCT includes and call sites per module (Part, PartDesign, Sketcher, TechDraw, Surface, FEM,
+CAM). Analyse the topological-naming and element-map dependencies (\code{TopoShapeExpansion},
+\code{ShapeMapper}, \code{ElementMap}) and how far OCCT leaks into Python bindings. Write option A (a
+facade over \code{TopoShape}) as a design note.
+\end{epic}
+
+\begin{epic}{KRN-02}{STEP exchange harness}{BG}{\stTodo}{FCB-P3-07..11}
+A separate harness repository: LE corpus STEP files (shared with \eref{FND-05}), round-trip metrics
+(volume, bounding box, face and edge counts, validity), a minimal kernel stub that reads and writes primitives,
+and Linux CI.
+\end{epic}
+
+\begin{epic}{KRN-03}{Kernel decision}{BG}{\stTodo}{FCB-P3-12/13/14}
+An A/B/C memo with effort estimates, reviewed, then a gate. Nothing in tracks MOD--MFG waits on it. The
+parity work uses \code{TopoShape} APIs, so it carries over under option A.
+\end{epic}

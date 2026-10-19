@@ -1,0 +1,142 @@
+% SPDX-License-Identifier: LGPL-2.1-or-later
+% BruceWorx roadmap: full Fusion 360 / SolidWorks parity, design through release.
+% Build:   python3 scripts/epics.py && latexmk -pdf plan.tex
+% Figures: scripts/render_patterns.py, scripts/render_roadmap.py, scripts/run_layout.py (FreeCADCmd)
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs,tabularx,array,longtable}
+\renewcommand{\tabularxcolumn}[1]{>{\raggedright\arraybackslash}p{#1}}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption,subcaption}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc,backgrounds}
+\usepackage[most]{tcolorbox}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{xurl}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{bwblue}{HTML}{1F6FEB}
+\definecolor{bworange}{HTML}{E5782F}
+\definecolor{bwgrey}{HTML}{6B7280}
+\definecolor{bwdark}{HTML}{2B2F36}
+\definecolor{bwred}{HTML}{D2463C}
+\definecolor{bwgreen}{HTML}{2E8B57}
+\definecolor{codebg}{HTML}{F5F6F8}
+
+\titleformat{\section}{\Large\bfseries\color{bwdark}}{\thesection}{0.8em}{}
+\titleformat{\subsection}{\large\bfseries\color{bwdark}}{\thesubsection}{0.8em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{bwdark}}{\thesubsubsection}{0.8em}{}
+\setcounter{tocdepth}{2}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\color{bwgrey}BruceWorx roadmap --- Fusion 360 / SolidWorks parity}
+\rhead{\small\color{bwgrey}\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+\lstset{
+  basicstyle=\ttfamily\small, backgroundcolor=\color{codebg}, frame=single,
+  rulecolor=\color{black!12}, columns=fullflexible, keepspaces=true,
+  breaklines=true, showstringspaces=false, xleftmargin=4pt, xrightmargin=4pt, aboveskip=8pt, belowskip=8pt,
+  keywordstyle=\color{bwblue}\bfseries, commentstyle=\color{bwgrey}\itshape,
+}
+\setlist{itemsep=2pt,topsep=4pt}
+\setlength{\emergencystretch}{3em}
+
+\newcommand{\code}[1]{\texttt{\small #1}}
+\newcommand{\file}[1]{\texttt{\small\color{bwdark}#1}}
+\newcommand{\verify}{\textcolor{bworange}{\textbf{[verify]}}}
+\newcommand{\marker}[1]{\tikz[baseline=-0.6ex]\node[circle,fill=bwred,text=white,font=\scriptsize\bfseries,inner sep=1.2pt,minimum size=12pt]{#1};}
+\newcommand{\eref}[1]{\textbf{\texttt{\small #1}}}
+
+% Status pills and parity symbols, pre-rendered into boxes (robust in captions and nested pictures).
+\newsavebox{\bwStDone}\newsavebox{\bwStProg}\newsavebox{\bwStTodo}
+\newsavebox{\bwPFull}\newsavebox{\bwPHalf}\newsavebox{\bwPNone}\newsavebox{\bwPAdd}
+\newcommand{\pill}[2]{\tikz[baseline=-0.65ex]\node[fill=#1,text=white,font=\scriptsize\bfseries,rounded corners=2pt,inner xsep=3pt,inner ysep=1.5pt]{#2};}
+\AtBeginDocument{%
+  \sbox{\bwStDone}{\pill{bwgreen}{Done}}%
+  \sbox{\bwStProg}{\pill{bworange}{In progress}}%
+  \sbox{\bwStTodo}{\pill{bwgrey}{To do}}%
+  \sbox{\bwPFull}{\tikz[baseline=-0.6ex]\fill[bwgreen] (0,0) circle (0.9ex);}%
+  \sbox{\bwPHalf}{\tikz[baseline=-0.6ex]{\draw[bworange,line width=0.5pt] (0,0) circle (0.85ex);\fill[bworange] (0,-0.85ex) arc (-90:90:0.85ex) -- cycle;}}%
+  \sbox{\bwPNone}{\tikz[baseline=-0.6ex]\draw[bwred,line width=0.6pt] (0,0) circle (0.85ex);}%
+  \sbox{\bwPAdd}{\tikz[baseline=-0.6ex]\node[draw=bwblue,text=bwblue,font=\tiny\bfseries,inner sep=1pt,rounded corners=1pt]{A};}%
+}
+\newcommand{\stDone}{\usebox{\bwStDone}}
+\newcommand{\stProg}{\usebox{\bwStProg}}
+\newcommand{\stTodo}{\usebox{\bwStTodo}}
+\newcommand{\pfull}{\usebox{\bwPFull}}
+\newcommand{\phalf}{\usebox{\bwPHalf}}
+\newcommand{\pnone}{\usebox{\bwPNone}}
+\newcommand{\padd}{\usebox{\bwPAdd}}
+
+% Epic box: \begin{epic}{ID}{Title}{Milestone}{status macro}{origin} ... \end{epic}
+\newtcolorbox{epic}[5]{enhanced,breakable,colback=white,colframe=black!20,colbacktitle=black!5,
+  coltitle=bwdark,boxrule=0.5pt,arc=2pt,left=6pt,right=6pt,top=4pt,bottom=4pt,
+  before skip=8pt,after skip=8pt,fonttitle=\small,
+  title={\textbf{\texttt{BW-#1}}\quad #2\hfill\textcolor{bwgrey}{#3}\quad #4},
+  after upper={\par\smallskip{\scriptsize\color{bwgrey}Ideas absorbed: #5}}}
+
+\begin{document}
+
+\begin{titlepage}
+  \setlength{\parindent}{0pt}
+  \vspace*{2cm}
+  {\color{bwblue}\rule{\linewidth}{2pt}}\\[0.6cm]
+  {\Huge\bfseries BruceWorx Roadmap}\\[0.3cm]
+  {\LARGE Full Fusion 360 / SolidWorks parity,\\[0.1cm] from first sketch to released drawing}\\[0.5cm]
+  {\Large\color{bwgrey} Epics, design rationale and theory}\\[0.4cm]
+  {\color{bwblue}\rule{\linewidth}{2pt}}\\[1cm]
+  \begin{tabular}{@{}ll}
+    Status & Draft for review\\
+    Date & 19 October 2026\\
+    Base & \code{main} @ \code{696260b}, FreeCAD 1.1.4 (BruceWorx build)\\
+    Scope & 12 tracks, 81 epics, milestones M0--M6 (\file{roadmap-epics.csv})\\
+  \end{tabular}
+
+  \vfill
+  \begin{center}
+  \includegraphics[width=0.32\linewidth]{fig/cfg_bracket.png}\hfill
+  \includegraphics[width=0.32\linewidth]{fig/frame_weldment.png}\hfill
+  \includegraphics[width=0.32\linewidth]{fig/sheet_flat.png}\\[2pt]
+  \includegraphics[width=0.32\linewidth]{fig/component_pattern.png}\hfill
+  \includegraphics[width=0.32\linewidth]{fig/interference.png}\hfill
+  \includegraphics[width=0.32\linewidth]{fig/mass_cg.png}
+  \end{center}
+  {\small\color{bwgrey} All six models were built and recomputed in headless FreeCAD 1.1.4 by the scripts
+  in \file{scripts/}. The renders are working figures; they will be regenerated after the UI redesign
+  (\eref{UIX-09}).}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\input{chapters/00-summary}
+\input{chapters/01-tonight}
+\input{chapters/10-foundation}
+\input{chapters/20-modeling}
+\input{chapters/30-assembly}
+\input{chapters/40-drawings}
+\input{chapters/50-pdm}
+\input{chapters/60-simulation}
+\input{chapters/70-manufacturing}
+\input{chapters/80-domain}
+\input{chapters/85-automation}
+\input{chapters/90-ui}
+\input{chapters/95-kernel}
+\input{chapters/98-questions}
+
+\appendix
+\input{chapters/A-parity}
+\input{chapters/B-ideas}
+\input{chapters/C-repro}
+
+\end{document}

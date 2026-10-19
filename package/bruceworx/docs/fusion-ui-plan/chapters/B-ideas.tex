@@ -1,0 +1,79 @@
+%======================================================================
+\section{Ops ideas $\rightarrow$ epics}\label{app:ideas}
+%======================================================================
+
+Every idea group from the BruceWorx Ops ``work'' list (191 items, sample data) and the epic that absorbs it.
+Review and gate items (``open PR + review'', ``GATE: merge OK'', ``try-out'', ``sign-off'') are not separate
+epics. They are the standard \emph{definition of done} for every epic: spike or mock where needed, design gate,
+build, tests and screenshots, PR review, merge gate, and a try-out by the mechanical user on a real LE part.
+
+\begin{center}
+\small
+\begin{longtable}{@{}p{4.6cm}p{4.2cm}p{6.6cm}@{}}
+\toprule
+Ops idea group & IDs & Absorbed by\\
+\midrule\endhead
+\bottomrule\endfoot
+Pixi + CI setup & FCB-P0-CI-01..06 & FND-01\\
+Build \& CI & FCB-P0-01, 06, 07, 08, 10 & FND-01\\
+Branding \& installer & FCB-P0-02, 03, 09, 11 & FND-02\\
+Review \& release gates & FCB-P0-04, 05, 16, 17, 18 & FND-02 (definition of done)\\
+Docs / License / Sync & FCB-P0-12..15 & FND-03 (sync policy changed), FND-04, FND-02\\
+26.3 rebase & FCB-P1-16..21 & FND-03 --- replaced by tracking upstream main\\
+Addon decision & FCB-P2-01/02 & FND-03\\
+Theme \& stylesheet & FCB-P1-01..03, 09 & UIX-01 (done), FND-05 (screenshot script)\\
+Defaults \& toolbars & FCB-P1-04/05 & UIX-01 (done)\\
+Task panel polish & FCB-P1-06..08 & UIX-07\\
+Review \& Victor (P1) & FCB-P1-10..15 & FND-07, UIX-01\\
+Viewport prefs & FCB-P1V-01..07, 10..12 & UIX-01 (done)\\
+Matcap shading & FCB-P1V-08, 09, 13..15 & UIX-08\\
+Victor review (viewport) & FCB-P1V-16..18 & UIX-01\\
+Mac stoplights & FCB-P1F-01..05 & UIX-02 (done)\\
+Floating model tree & FCB-P1F-06..14 & UIX-03\\
+History timeline & FCB-P1F-15..25 & UIX-04\\
+Review \& sign-off (P1F) & FCB-P1F-26..30 & UIX-02..04\\
+Part numbering & FCB-P2-03..05 & PDM-03\\
+TechDraw title block & FCB-P2-06..08 & DRW-01\\
+COTS library & FCB-P2-09/10 & ROB-01, MOD-05\\
+Headless hooks & FCB-P2-11..14 & AUT-01 (done)\\
+Leonardo assembly \& register & FCB-P2-15..17 & PDM-07, MOD-04 (STEP import checks)\\
+G1 freeze & FCB-P2-18 & PDM-07\\
+Review \& gates (P2) & FCB-P2-19..21 & definition of done\\
+FC-T01 switch criteria & FCB-P2-22 & PDM-08, M6 (open question \ref{q:fct01})\\
+Gap audit & FCB-P2A-01/02 & ASM-02\\
+Joints \& limits & FCB-P2A-03/04 & ASM-03\\
+Exploded views \& BOM & FCB-P2A-05/06 & ASM-04, DRW-02\\
+Sub-assemblies \& interference & FCB-P2A-07/08 & ASM-05, ASM-06\\
+Robotics kinematics & FCB-P2A-09/10 & ROB-05, ASM-10\\
+Tests, review (assembly) & FCB-P2A-11..14 & ASM epics' acceptance\\
+COTS robotics parts & FCB-P2R-01..04 & ROB-01\\
+Frame \& arm templates & FCB-P2R-05/06 & ROB-02\\
+Mass/CG \& balance & FCB-P2R-07/08 & ROB-03, ROB-04, MOD-11\\
+Tests, review (robotics) & FCB-P2R-09..12 & ROB epics' acceptance\\
+Owen intake \& adopt decision & FCB-P2E-01..04 & ECD-01\\
+Board STEP \& outline & FCB-P2E-05/06 & ECD-02, ECD-03\\
+Placement \& enclosure fit & FCB-P2E-07/08 & ECD-04\\
+Tests, review (ECAD) & FCB-P2E-09..12 & ECD epics' acceptance\\
+MCP base decision & FCB-P2AI-01/02 & AUT-03\\
+bruceworx.api \& MCP server & FCB-P2AI-03..08 & AUT-02, AUT-03\\
+Assistant panel & FCB-P2AI-09..12 & AUT-04\\
+Review \& try-out (AI) & FCB-P2AI-13..15 & AUT-04\\
+OCCT coupling survey & FCB-P3-01..06 & KRN-01\\
+STEP harness & FCB-P3-07..11 & KRN-02, FND-05\\
+Kernel decision & FCB-P3-12..14 & KRN-03\\
+\midrule
+FC-T01 system-of-record lock & decision & superseded by full parity; M6\\
+FC-T02 Mac install \& pixi build & task & FND-01\\
+FC-T04 Part-numbering macro & task & PDM-03\\
+FC-T05 TechDraw template & task & DRW-01\\
+FC-T07 COTS library & task & ROB-01\\
+FC-T10 Agent and script hooks & task & AUT-01, AUT-02\\
+Rebase onto 26.3? & decision & answered: track upstream main (FND-03)\\
+Ship P2 as add-on or in fork? & decision & FND-03 (still open; follows the upstream rule ``add-ons over core edits'')\\
+\end{longtable}
+\end{center}
+
+\noindent
+\textbf{New epics with no Ops origin} (gaps found in this review): FND-06, MOD-01--04, MOD-06--10,
+MOD-12, ASM-01, ASM-07--09, DRW-03--08, PDM-01, PDM-02, PDM-04--06, all of SIM, MFG-01--04, AUT-05, UIX-05,
+UIX-06 and UIX-09.

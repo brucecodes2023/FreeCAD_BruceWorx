@@ -1,0 +1,98 @@
+%======================================================================
+\section{Track SIM --- Simulation}\label{sec:sim}
+%======================================================================
+
+The solvers are already in the box. CalculiX in FreeCAD exposes \code{static}, \code{frequency},
+\code{thermomech}, \code{check} and \code{buckling} (\file{femsolver/calculix/solver.py:44}), with contact in
+1.1, and Elmer adds thermal and multiphysics. What is missing compared with Fusion's simulation workspace is
+the \emph{workflow}: study templates, sensible defaults, a safety-factor result, FDM-aware materials, and
+verified reports. A grep of \file{src/Mod/Fem} finds no safety-factor result and no orthotropic material
+model. The material library has ABS, PLA, PA6 and PET, but no PETG or carbon-filled nylon.
+Scope as decided: static + contact, modal, buckling, thermal and thermal stress now; CFD later.
+
+\begin{epic}{SIM-01}{Study setup (Fusion-style)}{M4}{\stTodo}{(new)}
+A Simulation workspace with study types \emph{Static stress}, \emph{Modal frequencies},
+\emph{Structural buckling}, \emph{Thermal} and \emph{Thermal stress}. Each is a template that creates the
+FEM analysis, mesh (with curvature-based refinement), material assignment from the part, and the loads and
+constraints panel, with a pre-check that lists missing inputs before solving.
+\emph{Acceptance:} every study type runs from the template on a corpus part, with no FEM-workbench steps.
+\end{epic}
+
+\begin{epic}{SIM-02}{Contacts, bolts \& preload}{M4}{\stTodo}{(new)}
+Automatic contact detection between touching assembly faces (bonded by default, separation where chosen),
+and \textbf{bolt connectors} with preload that replace modelled fasteners in the mesh.
+\emph{Acceptance:} a bolted-bracket benchmark is within 5\,\% of the reference solution.
+\end{epic}
+
+\begin{epic}{SIM-03}{Materials incl.\ FDM}{M4}{\stTodo}{(new)}
+Library entries for PETG, ABS, PLA, PA-CF, Al 6061-T6 and steel, with yield, ultimate, modulus,
+Poisson's ratio, density, thermal conductivity, expansion and heat-deflection temperature. Printed materials get
+a \textbf{knockdown} model by default and an optional \textbf{orthotropic} model oriented by the part's print
+direction (shared with \eref{MFG-01}). The user picks per study.
+\emph{Acceptance:} the same bracket printed in two orientations shows a lower safety factor in the Z-weak one.
+\end{epic}
+
+\paragraph{Theory: FDM material models.} A printed part is stronger and stiffer along the deposited roads
+(the XY plane) than across layers (Z), where strength depends on interlayer bonding.
+\begin{enumerate}
+  \item \textbf{Isotropic with knockdown.} Use isotropic $E,\nu$, and an allowable stress
+        $\sigma_{\text{allow}}=\eta\,\sigma_y$ with $\eta\in(0,1]$ per material and process, for example
+        0.5--0.7 for PETG with Z loading possible. It is conservative, simple and easy to validate with one
+        coupon test per material.
+  \item \textbf{Orthotropic (transversely isotropic) by orientation.} With in-plane axes 1, 2 (XY, isotropic)
+        and the build axis 3, the compliance relation $\boldsymbol\varepsilon=S\boldsymbol\sigma$ uses
+        \[
+          S=\begin{pmatrix}
+          \frac1{E_p}&-\frac{\nu_p}{E_p}&-\frac{\nu_{zp}}{E_z}&&&\\
+          -\frac{\nu_p}{E_p}&\frac1{E_p}&-\frac{\nu_{zp}}{E_z}&&&\\
+          -\frac{\nu_{pz}}{E_p}&-\frac{\nu_{pz}}{E_p}&\frac1{E_z}&&&\\
+          &&&\frac1{G_{zp}}&&\\&&&&\frac1{G_{zp}}&\\&&&&&\frac{2(1+\nu_p)}{E_p}
+          \end{pmatrix},
+          \qquad \frac{\nu_{pz}}{E_p}=\frac{\nu_{zp}}{E_z},
+        \]
+        so there are 5 independent constants ($E_p,E_z,\nu_p,\nu_{zp},G_{zp}$). The material frame is rotated
+        into the part frame from the print-direction property. Failure uses a Tsai--Hill-type index with
+        separate in-plane and interlayer strengths ($X_p$, $Z$), so a Z-loaded design fails earlier, as it does
+        on a printer.
+\end{enumerate}
+CalculiX supports anisotropic elastic materials through its \code{*ELASTIC, TYPE=ENGINEERING CONSTANTS} card
+\verify. The work is in the FreeCAD material model, the orientation transfer and the result evaluation.
+
+\begin{epic}{SIM-04}{Results \& reports}{M4}{\stTodo}{(new)}
+Results: von Mises, principal stresses, displacement, \textbf{safety factor} (minimum and field), mode shapes
+with frequencies, buckling load factors, and temperatures. Probes, a \textbf{mesh-convergence study}
+(automatic refinement until the quantity of interest changes by less than a tolerance), and a PDF report
+generated from the study.
+\emph{Acceptance:} the report regenerates from the study and includes the convergence plot.
+\end{epic}
+
+\paragraph{Theory: what each study solves.} After discretisation, with stiffness $K$, mass $M$, geometric
+(stress) stiffness $K_\sigma$, conductivity $K_T$ and heat load $\mathbf q$:
+\[
+\begin{aligned}
+\text{static:}\quad & K\mathbf u=\mathbf f, \qquad \sigma_{vM}=\sqrt{\tfrac12\big[(\sigma_1-\sigma_2)^2+(\sigma_2-\sigma_3)^2+(\sigma_3-\sigma_1)^2\big]},\qquad SF=\frac{\sigma_{\text{allow}}}{\max\sigma_{vM}}\\
+\text{modal:}\quad & K\boldsymbol\phi=\omega^2M\boldsymbol\phi,\qquad f_i=\omega_i/2\pi\\
+\text{buckling:}\quad & (K+\lambda K_\sigma)\boldsymbol\phi=\mathbf 0,\qquad P_{\text{cr}}=\lambda_1 P_{\text{applied}}\\
+\text{thermal:}\quad & K_T\mathbf T=\mathbf q;\quad\text{thermal stress: } K\mathbf u=\mathbf f+\mathbf f_{\text{th}}(\mathbf T-\mathbf T_0)
+\end{aligned}
+\]
+For drone arms, the modal study matters because the first bending frequency must stay away from motor
+rotation frequencies, $f_1 \notin [0.8,1.2]\cdot\text{RPM}/60$. \textbf{Convergence:} for element size $h$
+and order $p$, the error in a smooth quantity decreases as $O(h^{p+1})$. Three meshes refined by a ratio $r$
+give an extrapolated value (Richardson), $Q_\infty\approx Q_3+(Q_3-Q_2)/(r^{p+1}-1)$. The report shows
+$|Q_3-Q_\infty|/|Q_\infty|$ as the discretisation error.
+
+\begin{epic}{SIM-05}{Verification benchmarks}{M4}{\stTodo}{(new)}
+Closed-form checks run in CI on every solver or FreeCAD update:
+cantilever tip deflection $\delta=PL^3/3EI$;
+plate with a small central hole in tension, $K_t\to3$;
+Euler column $P_{\text{cr}}=\pi^2EI/(KL)^2$;
+cantilever first mode $\omega_1=1.875^2\sqrt{EI/(\rho AL^4)}$;
+plane wall conduction $q=k\,\Delta T/t$.
+\emph{Acceptance:} all benchmarks within the stated tolerance (2--5\,\%) in CI.
+\end{epic}
+
+\begin{epic}{SIM-06}{CFD / airflow (later)}{M5}{\stTodo}{(new)}
+Deferred by decision. When it starts, the candidate is the CfdOF add-on driving OpenFOAM, for prop wash on
+arms and cooling airflow through electronics enclosures. Scope is set at that time.
+\end{epic}

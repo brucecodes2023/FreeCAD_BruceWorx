@@ -1,0 +1,59 @@
+%======================================================================
+\section{Track MFG --- Manufacturing outputs}\label{sec:mfg}
+%======================================================================
+
+BruceWorx parts go to three processes: FDM printing (PETG/ABS), CNC machining and sheet metal / laser.
+FreeCAD already exports 3MF (Mesh workbench) and DXF (Draft importers), and its CAM workbench ships
+post-processors, including GRBL and LinuxCNC. This track connects those to the model and to the release.
+
+\begin{epic}{MFG-01}{3D-print prep}{M3}{\stTodo}{(new)}
+\begin{itemize}
+  \item A \textbf{print orientation} property on each part (build direction plus a rotation about it). It is
+        shown as a build-plate gizmo and used by the overhang map (\eref{MOD-11}) and the orthotropic
+        material (\eref{SIM-03}).
+  \item \textbf{3MF export} with orientation applied, units, part name \code{P/N-REV}, material and colour
+        metadata.
+  \item \textbf{Slicer handoff}: open the 3MF directly in OrcaSlicer, Bambu Studio or PrusaSlicer, configurable,
+        with a per-material profile hint.
+  \item \textbf{Insert and print-hole presets}: heat-set insert holes by insert size, plus clearance and
+        horizontal-hole teardrop shapes (from \eref{MOD-05}).
+\end{itemize}
+\emph{Acceptance:} a part opens in the slicer already oriented, with its name and material set.
+\end{epic}
+
+\paragraph{Theory: choosing an orientation.} For a candidate build direction $\mathbf b$, score
+\[
+  J(\mathbf b)=w_1\!\!\sum_{f:\ \mathbf n_f\cdot(-\mathbf b)>\cos\theta_c}\!\! A_f
+  \;+\;w_2\,h(\mathbf b)\;+\;w_3\,\big|\boldsymbol\sigma_{\text{dominant}}\cdot\mathbf b\big| ,
+\]
+which adds supported area, build height and the alignment of the main load with the weak Z axis (from a
+static study, if one exists). Evaluating the faces of the convex hull plus the principal axes as candidates,
+and taking the minimum, gives a suggested orientation that the user can accept or override.
+
+\begin{epic}{MFG-02}{CNC CAM}{M3}{\stTodo}{(new)}
+Use FreeCAD CAM with BruceWorx defaults: a \textbf{setup template} (stock from the bounding box plus
+allowance, work offset at a datum corner), a \textbf{tool library} matching the shop's tools, operation
+templates (face, adaptive clearing, profile, drill and chamfer), and a \textbf{post-processor} for the target
+machine (open question).
+\emph{Acceptance:} a corpus part posts G-code that simulates clean in the CAM simulator.
+\end{epic}
+
+\begin{epic}{MFG-03}{Sheet-metal flat DXF}{M3}{\stTodo}{(new)}
+Export each sheet-metal part's flat pattern (\eref{MOD-06}) as DXF, with layers \code{CUT} (outline and
+holes), \code{BEND\_UP}/\code{BEND\_DOWN} (bend lines) and \code{ETCH} (part number), and a bend note
+block. File name \code{P/N-REV.dxf}. Units are mm, and splines are converted to arcs where the shop's CAM
+requires it.
+\emph{Acceptance:} the laser shop accepts the DXF without edits.
+\end{epic}
+
+\begin{epic}{MFG-04}{Release package}{M2}{\stTodo}{(new)}
+When a revision is released (\eref{PDM-05}), build a package: STEP AP242 per part and assembly, the PDF
+drawing, DXF flats, 3MF prints and a CSV BOM, plus a manifest with SHA-256 checksums. The package is attached
+to the revision in the vault.
+\emph{Acceptance:} rebuilding the package from the released files gives identical checksums for every
+deterministic output.
+\end{epic}
+
+\paragraph{Note on determinism.} STEP and PDF writers embed timestamps. The package normalises them, for
+example by setting the STEP header time to the release time, so the checksum identifies \emph{content}.
+A vendor who receives \code{LE-02001-A} can then verify that the files are exactly the released ones.

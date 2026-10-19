@@ -1,0 +1,44 @@
+%======================================================================
+\section{Reproducing this document}\label{app:repro}
+%======================================================================
+
+\begin{lstlisting}
+# 1. Epics -> roadmap-epics.csv, chapters/gen-epics.tex, chapters/gen-swimlanes.tex
+python3 package/bruceworx/docs/fusion-ui-plan/scripts/epics.py
+
+# 2. 3D figures (headless FreeCAD; prints the FACT lines quoted in the text)
+build/release/bin/FreeCADCmd package/bruceworx/docs/fusion-ui-plan/scripts/render_patterns.py
+build/release/bin/FreeCADCmd package/bruceworx/docs/fusion-ui-plan/scripts/render_roadmap.py
+
+# 3. UI mocks (FreeCADCmd's Qt has the offscreen plugin)
+QT_QPA_PLATFORM=offscreen build/release/bin/FreeCADCmd \
+    package/bruceworx/docs/fusion-ui-plan/scripts/run_layout.py
+
+# 4. PDF
+cd package/bruceworx/docs/fusion-ui-plan && latexmk -pdf plan.tex
+\end{lstlisting}
+
+\paragraph{Importing into Ops.} \file{roadmap-epics.csv} has one row per epic with columns \code{id},
+\code{track}, \code{title}, \code{milestone}, \code{milestone\_name}, \code{status}, \code{depends\_on}
+(space-separated IDs), \code{origin\_ideas}, \code{summary} and \code{acceptance}. Statuses reflect the
+repository (merged PRs), not the Ops sample data.
+
+\paragraph{Sources for external facts} (accessed 18--19 Oct 2026).
+{\small
+\begin{itemize}
+  \item conda-forge package metadata via \code{pixi search} and \url{https://api.anaconda.org} (OCP, build123d, CadQuery pins).
+  \item SheetMetal add-on: \url{https://github.com/shaise/FreeCAD_SheetMetal} (LGPL since v0.4.00).
+  \item FreeCAD 1.1 release notes: \url{https://wiki.freecad.org/Release_notes_1.1}.
+  \item Fusion: \url{https://www.autodesk.com/products/fusion-360/blog/category/whatsnew};
+        BOM and change management \url{https://www.autodesk.com/products/fusion-360/blog/boms-change-management-autodesk-fusion/};
+        Simulation extension \url{https://www.autodesk.com/products/fusion-360/simulation-extension.html}.
+  \item SolidWorks 2026: \url{https://www.javelin-tech.com/3d/drawings-whats-new-in-solidworks-2026/};
+        \url{https://blog.cadsoftwaredirect.com/whats-new-in-solidworks-2026/};
+        PDM editions \url{https://www.goengineer.com/solidworks-pdm-standard-vs-professional-guide};
+        Simulation tiers \url{https://www.javelin-tech.com/blog/2019/07/solidworks-simulation-package-comparison/}.
+  \item Open-source PDM survey: \url{https://github.com/source-code-learning/FreePDM};
+        \url{https://linuxfr.org/users/yboy360/journaux/petit-plm-pour-freecad}.
+  \item build123d / OCP ecosystem: \url{https://build123d.readthedocs.io/en/latest/external.html};
+        \url{https://ocp-freecad-cam.readthedocs.io/}.
+  \item AutoCAD aliases: \url{https://help.autodesk.com/cloudhelp/2025/ENU/AutoCAD-Customization/files/GUID-D4CACED6-DFBA-43C3-BC42-8D980AB3AE75.htm}.
+\end{itemize}}

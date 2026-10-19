@@ -1,0 +1,73 @@
+%======================================================================
+\section{Track FND --- Foundation and upstream}\label{sec:fnd}
+%======================================================================
+
+Every other track depends on a fork that builds reproducibly, ships, and keeps up with FreeCAD. Two
+foundation decisions changed in the interview. BruceWorx now tracks \textbf{upstream main} instead of
+waiting for the 26.3 tag. Fixes found while reviewing the UI now have an epic of their own.
+
+\begin{epic}{FND-01}{Build \& CI on Linux and macOS arm64}{M0}{\stProg}{FCB-P0-CI-01..06, P0-01, P0-06..08, P0-10}
+Pixi environments and lockfiles for both platforms, ccache in CI, and the self-hosted Apple-silicon runner.
+\file{BUILDING-BRUCEWORX.md} and \file{.github/workflows/bruceworx-ci.yml} exist, and the Linux STEP check
+and hosted macOS lock are merged (\#4).
+\emph{Acceptance:} a fresh clone builds on both platforms using only the documented commands, and CI is green
+on both.
+\end{epic}
+
+\begin{epic}{FND-02}{Packaging, branding \& releases}{M0}{\stProg}{FCB-P0-02, P0-03, P0-09, P0-11, P0-17, P0-18}
+The version string already reads \code{1.1.4-bw.1}, and the unsigned arm64 \code{.dmg} script is merged
+(\#3). Remaining: tag a release carrying the dmg plus a source tarball, and decide on signing and
+notarisation before anyone outside the team installs it.
+\emph{Acceptance:} the tagged release installs on a clean Mac and opens a Fusion STEP export
+(\code{LE-01001}, 200$\times$200$\times$8 envelope).
+\end{epic}
+
+\begin{epic}{FND-03}{Track upstream FreeCAD main}{M0}{\stTodo}{FCB-P1-16..21, P0-12 (replaced)}
+\file{UPSTREAM-SYNC.md} currently says ``stay on 1.1.4, rebase onto 26.3 when it ships''. That changes to
+continuous tracking:
+\begin{itemize}
+  \item \code{upstream-main} stays a fast-forward mirror. A nightly job rebases the \code{[BW]} series onto it
+        and runs the BruceWorx tests plus the headless acceptance corpus (\eref{FND-05}).
+  \item A conflict or red build opens an issue automatically. The \emph{conflict budget} is the number of
+        upstream files our series touches. It is reported each night and must not grow without a reason
+        recorded in the PR.
+  \item Product releases are still cut from a tested point (\code{main} after a green nightly), not from
+        arbitrary upstream commits.
+\end{itemize}
+\emph{Why:} the Assembly, TechDraw and FEM work that parity depends on lands upstream continuously.
+Rebasing once a year makes every conflict expensive at once.
+\emph{Acceptance:} the nightly rebase runs for two weeks; each conflict is resolved within a working day.
+\end{epic}
+
+\begin{epic}{FND-04}{Licences \& notices}{M0}{\stTodo}{FCB-P0-13}
+FreeCAD is LGPL-2.1-or-later. The roadmap bundles more components: SheetMetal (LGPL-2.1-or-later), OCP, CadQuery and build123d
+(Apache-2.0), possibly an OpenSCAD binary (GPL-2, shipped as a separate executable) and a fastener library
+(licence to check \verify). Each needs a line in \file{NOTICE} and a third-party licence file in the app
+bundle.
+\emph{Acceptance:} every bundled component is listed; each release has a source tarball attached.
+\end{epic}
+
+\begin{epic}{FND-05}{Acceptance corpus \& test harness}{M0}{\stTodo}{FCB-P1-09, P3-08}
+One corpus serves every epic: native and STEP versions of LE parts and assemblies, the 2-DOF arm, the quad
+frame, and the benchmark models in this document. A single command runs every headless check.
+Screenshots come from the existing before/after script. The renders in this document already come from
+headless FreeCAD (\file{scripts/}), and the harness generalises that.
+\emph{Acceptance:} \code{pixi run acceptance} runs all checks in CI in under 15 minutes.
+\end{epic}
+
+\begin{epic}{FND-06}{Fixes found in review}{M0}{\stProg}{(new)}
+\begin{enumerate}
+  \item \textbf{Linear Pattern direction 2 drops a row} (\S\ref{sec:bug}). \code{Spacings2} is declared
+        \code{(\{\})}, which stores \code{[0.0]}. Fix the declaration, migrate saved files, add a test.
+  \item \textbf{Workbench trim not applied.} The pack lists FEM, CAM, BIM, Robot and others as disabled
+        (\file{bruceworx\_pack.py:118}), but the screenshot shows 13 tabs. The uncommitted
+        \code{param\_fallback} change suggests the pack crashed on \code{int(None)} \verify.
+  \item \textbf{Overlay model tree missing} on the screenshot, although it is on by default; root cause unknown \verify.
+\end{enumerate}
+\emph{Acceptance:} a $4\times3$ pattern gives 12 instances; only intended workbenches are visible; the tree shows on first run.
+\end{epic}
+
+\begin{epic}{FND-07}{On by default, each with an off switch}{M0}{\stDone}{FCB-P1-01, P1-10}
+Merged in \#9. It remains a rule for every epic below: a feature ships enabled and can be switched off on
+Preferences~$\rightarrow$~BruceWorx, and switching it off restores stock behaviour.
+\end{epic}

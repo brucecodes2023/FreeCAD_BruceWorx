@@ -1,0 +1,91 @@
+%======================================================================
+\section{Test session --- Sunday 19 October 2026 (tonight)}\label{sec:tonight}
+%======================================================================
+
+\textbf{What is being tested.} The first build with roadmap work in it: the review fixes (\eref{FND-06}) and
+Rectangular/Circular Pattern for bodies and components (\eref{MOD-01}). Everything below already passes headless
+(171 PartDesign tests, 19 pattern tests, offscreen dialog and observer checks; steps 14--17 were added with the
+assembly audit and the part-property schema). Tonight is about what only a person
+at the screen can judge: does it look right, feel right, and survive real clicking?
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+Branch & \code{bw/fnd06-mod01-patterns} (uncommitted; base \code{696260b})\\
+Build & \file{build/release} (FreeCAD 1.1.4-bw.1), already rebuilt\\
+Launch & \code{pixi run freecad-release} \quad (uses \file{package/bruceworx/run-freecad.sh})\\
+Keep open & View $\rightarrow$ Panels $\rightarrow$ Report view, so warnings show up\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\newcommand{\tick}{\tikz[baseline=-0.6ex]\draw[black!50] (0,-0.9ex) rectangle (1.8ex,0.9ex);}
+
+\begin{center}
+\small
+\begin{longtable}{@{}p{0.5cm}p{6.4cm}p{6.6cm}c@{}}
+\toprule
+\# & Do & Expect & OK\\
+\midrule\endhead
+\bottomrule\endfoot
+1 & Start FreeCAD. Look at the left side of the window before moving the mouse there. &
+  The model tree (Browser) is visible without hovering. \emph{Fix: auto-hide now defaults to off.} & \tick\\
+2 & Check the workbench tabs. \emph{Needs your pending \code{param\_fallback} fix, which is in the working tree.} &
+  Only the trimmed set (PartDesign, Assembly, Sketcher, Part, TechDraw, Draft, Spreadsheet, Start); the Report
+  view shows ``BruceWorx: applied the BruceWorx preference pack''. & \tick\\
+3 & PartDesign: a body with a 10\,mm box; Linear Pattern, direction 1 = X, 4 instances, spacing 10; direction 2 = Y,
+  3 instances, spacing 10. & 12 boxes as one $40\times30\times10$ solid. Before the fix this gave 8. & \tick\\
+4 & Open an old file that has a two-direction linear pattern (if you have one). & It now shows every row; the
+  pattern repairs itself on recompute. & \tick\\
+5 & Select a \emph{body} (not a feature) $\rightarrow$ Rectangular Pattern (PartDesign toolbar, after Polar Pattern,
+  or BruceWorx menu). Change quantity, distance, distance type, Symmetric, then tick Direction~2. &
+  Dialog opens with live preview; every change updates the 3D view at once; parallel directions show a red
+  message instead of breaking. & \tick\\
+6 & In the same dialog, uncheck two rows in ``Instances''. Press Cancel. Repeat and press OK. &
+  Unchecked instances disappear. Cancel leaves no trace in the tree; OK leaves one ``\ldots pattern'' object. & \tick\\
+7 & Select that pattern object and press Rectangular Pattern again. & The dialog reopens with the saved values and
+  suppressed rows; edits apply to the same object. & \tick\\
+8 & Move the original body (Transform or Placement). & The pattern follows. & \tick\\
+9 & Select a body $\rightarrow$ Circular Pattern. Select a circular edge of a hole on another part, press
+  ``Use selection'' next to Axis. Try Full, Angle 90\,$^\circ$, Symmetric. &
+  Instances spin about that hole's centre; Angle and Symmetric spread as labelled; the angle box is greyed out for
+  Full. & \tick\\
+10 & Assembly: insert a bolt part, select it, Circular Pattern, quantity 6, OK. Then add a joint to one of the
+  generated bolts. & Six bolts; the BOM / component count sees 6. \emph{Joint to a generated
+  instance is the one case not tested headless.} & \tick\\
+11 & Repeat 5 with Copies = Independent, OK. & Separate solids (bodies) or separate links (components) appear; they
+  no longer follow the original. & \tick\\
+12 & Select a PartDesign \emph{feature} (e.g.\ a pocket) $\rightarrow$ Rectangular Pattern. & PartDesign's own Linear
+  Pattern dialog opens (features keep using PartDesign until the upstream rebase). & \tick\\
+13 & Preferences $\rightarrow$ BruceWorx: untick ``Rectangular and Circular Pattern commands'', switch workbench. &
+  The two buttons disappear from the toolbars. & \tick\\
+\midrule
+\multicolumn{4}{@{}p{14.6cm}@{}}{\textit{Added after the assembly audit (section~\ref{sec:asm-audit}); steps 14 and 16 test the joint
+  changes of section~\ref{sec:joints}.}}\\
+14 & Assembly: two parts joined by a Revolute joint, no limits. \emph{Drag}: click the moving part in the 3D view and
+  pull it round. Then edit the joint: tick Min and Max angle, set 0 and 90\,$^\circ$, press \emph{Pick datums} and
+  click a flat face on each part; OK. Drag again. &
+  Without limits it swings all the way round. With them the panel shows ``Now at \ldots'' measured between the two
+  faces, and the drag stops at 0 and 90\,$^\circ$ from where the faces line up. & \tick\\
+15 & After step 10: change the bolt pattern quantity from 6 to 8, then to 4 (keep the jointed bolt within the
+  first 4). Then to 2, so the jointed bolt goes away. &
+  The joint stays on its bolt at 8 and 4. At 2 the joint reports a clear error in the tree, no crash. & \tick\\
+16 & Put two parts where you want them by hand (Transform). Ground one. Add a Fixed joint between a face of each,
+  first with \emph{Keep parts where they are} unticked, then tick it before OK. &
+  Unticked: the second part jumps so the picked faces line up. Ticked: it goes back and stays exactly where you put
+  it. & \tick\\
+17 & Part properties: open the Python console (View $\rightarrow$ Panels) on a part file and run
+  \newline\code{from bruceworx.partprops import load\_schema}\newline\code{load\_schema().apply(}\newline\code{\ \ App.ActiveDocument.Part)}\newline then give the
+  body a material. In an assembly of it, Create BOM and add columns \code{.PartNumber}, \code{.Revision},
+  \code{.MaterialName}, \code{.Mass}. &
+  A ``BruceWorx'' group in the part's properties (P/N, Revision, Material name and Mass greyed out). The BOM shows
+  the material and the mass; a revision typed as 01 shows as 01, not 1. & \tick\\
+\end{longtable}
+\end{center}
+
+\paragraph{Report back.} For anything that is not as expected: a screenshot, the Report view text, and the step
+number. Saving the test document (\code{File $\rightarrow$ Save}) helps reproduce it here.
+
+\paragraph{Not in tonight's build.} Symmetric and suppression for PartDesign \emph{features} (they come with the
+upstream rebase, \eref{FND-03}); the Fusion-style workspaces and panels (UI track, after M2).

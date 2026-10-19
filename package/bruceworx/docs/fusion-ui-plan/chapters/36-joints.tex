@@ -1,0 +1,104 @@
+%======================================================================
+\subsection{Joints: drag, limits from datums, keep parts in place (built 19 Oct 2026)}\label{sec:joints}
+%======================================================================
+
+\textbf{Your answers (19 Oct).}
+\begin{itemize}[nosep]
+  \item Drag must work, with no angle limit unless one is set in the joint.
+  \item A limit needs a datum to be measured from.
+  \item A new joint moves the parts so the picks line up; a checkbox makes that optional.
+\end{itemize}
+
+\paragraph{What FreeCAD 1.1 already did (measured headless).} Limits are off on a new joint. Dragging is free
+without them. With limits on, the solver \emph{does} stop a dragged part at them: a 0--90\,$^\circ$ revolute,
+dragged to 130\,$^\circ$, stops at 90.000\,$^\circ$. A plain solve does not: a part turned to 120\,$^\circ$ by hand
+stays there. What was missing is the reference. FreeCAD measures the angle between the $x$ axes of the two joint
+connectors, and the $x$ axis comes from whichever face or edge was picked. So ``0\,$^\circ$'' is wherever the
+geometry happens to put it.
+
+\paragraph{Limits from datums.} In the joint panel, \emph{Limits $\rightarrow$ Measured from: Pick datums}, then
+pick a planar face, a straight edge, or a datum plane or line on each part. The limits are then measured from the
+position where the two datums line up. A door limited to 0--110\,$^\circ$, with the door's face and the wall's face
+as datums, reads 0 when it is closed flush. The panel shows the current reading (``Now at 37.0\,$^\circ$''). With no
+datums, limits are measured from the joint's own axes, as before. A datum may be given on one side only; the other
+side then uses its connector's $x$ axis. \textbf{Which way a datum must face:} for an angle it needs a direction
+\emph{across} the axis, so pick a face the axis runs along (the door's face, for its hinge) or an edge square to the
+axis. A face square to the axis (the top of the hinge pin) only spins in its own plane and has no angle to read; the
+panel and the Report view say so. It does not have to be exactly square: a tilted face is measured by its shadow on
+the plane of rotation. For a length limit it is the other way round: faces square to the slide direction.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[>=Stealth, scale=1.15]
+  \fill[gray!15] (-0.25,-0.25) rectangle (0.25,0.25);
+  \draw[thick] (0,0) circle (0.08);
+  \node[below left] at (0,0) {\small axis $z_1$};
+  % connector 1 x axis
+  \draw[->, gray] (0,0) -- (2.6,0) node[right] {\small $x_1$};
+  % connector 2 x axis
+  \draw[->, gray] (0,0) -- ({2.6*cos(65)},{2.6*sin(65)}) node[above] {\small $x_2$};
+  \draw[gray] (0.9,0) arc (0:65:0.9);
+  \node[gray] at (1.1,0.5) {\small $\theta$};
+  % datum 1
+  \draw[->, very thick, bworange] (0,0) -- ({2.2*cos(-25)},{2.2*sin(-25)}) node[right] {\small datum 1, $d_1$};
+  \draw[bworange] (0.6,0) arc (0:-25:0.6);
+  \node[bworange] at (0.85,-0.17) {\scriptsize $\alpha_1$};
+  % datum 2
+  \draw[->, very thick, blue!70!black] (0,0) -- ({2.2*cos(105)},{2.2*sin(105)}) node[above left] {\small datum 2, $d_2$};
+  \draw[blue!70!black] ({0.5*cos(65)},{0.5*sin(65)}) arc (65:105:0.5);
+  \node[blue!70!black] at (-0.02,0.7) {\scriptsize $\alpha_2$};
+  % datum angle
+  \draw[<->, thick] ({1.6*cos(-25)},{1.6*sin(-25)}) arc (-25:105:1.6);
+  \node at (-1.25,1.25) {\small $\theta_d$};
+\end{tikzpicture}
+\caption{Looking down the joint axis. Each datum sits at a fixed angle $\alpha_i$ in its own connector's frame,
+because datum and connector are on the same part. The limit is applied to $\theta_d$, the angle from datum~1 to
+datum~2.}
+\label{fig:limit-datum}
+\end{figure}
+
+\paragraph{The arithmetic.} Turning part~2 by the joint angle $\theta$ turns datum~2 with it, so the datum angle is
+\[
+  \theta_d = \theta + \alpha_2 - \alpha_1 \qquad\Longrightarrow\qquad \theta = \theta_d + \theta_0,\quad
+  \theta_0 = \alpha_1 - \alpha_2 .
+\]
+Here $\alpha_i$ is the angle of datum $i$'s direction, projected onto connector $i$'s $xy$ plane. The direction is a
+face's normal, an edge's direction, or a datum's own $z$. Each $\alpha_i$ depends only on where the datum sits on its
+own part, so $\theta_0$ does not change as the parts move. It is stored on the joint as \code{LimitAngleZero}
+(read-only). A limit $\theta_d \in [\theta_{\min}, \theta_{\max}]$ becomes $\theta \in [\theta_{\min} + \theta_0,
+\theta_{\max} + \theta_0]$ for the solver. Lengths work the same way, with the datums' heights $h_i$ along the axis:
+$L_0 = h_1 - h_2$, stored as \code{LimitLengthZero}.
+
+\paragraph{Drag backstop.} The solver stops at limits today, but nothing checked that it does. After each drag step,
+BruceWorx now reads every limited joint itself. If a step would take a joint further past a limit, it is cut back:
+the move is halved six times from the last good position, so the part stops within $1/64$ of one mouse step of the
+limit. A plain solve that leaves a joint outside its limits now prints a warning in the Report view (``Hinge is at
+120 deg, outside its limits (0 deg to 90 deg)''). Python can now drive a drag (\code{preDrag}, \code{doDragStep},
+\code{postDrag}), which is how all of this is tested without a screen.
+
+\paragraph{Keep parts where they are.} New checkbox in the joint panel, off by default, so a joint still moves one part
+to line up the picks. Ticked, the joint is fitted to where the parts are: connector~2's offset takes up the
+difference, $O_2' = O_2\,P_2^{-1}P_1$, where $P_i$ are the two connectors' world placements. Nothing moves, and the
+joint still works: a revolute made this way turns about connector~1's axis. For a revolute, the angle then reads 0
+where the parts were placed, so limits without datums count from the position the parts were built in (Fusion's
+\emph{as-built} joint). The setting is stored on the joint (\code{KeepPosition}); ticking or unticking it while the
+panel is open redoes the joint from the parts' original places. It is shown for Fixed, Revolute, Cylindrical, Slider
+and Ball joints.
+
+\paragraph{Verified headless.} 7 new Assembly tests (\file{AssemblyTests/TestBWJoints.py}), all passing with the 8
+existing ones:
+\begin{itemize}[nosep]
+  \item a free drag to 170\,$^\circ$ and $-120\,^\circ$ without limits;
+  \item a 0--90\,$^\circ$ limit stops a drag at 90 and at 0;
+  \item the reading equals the face-to-face angle worked out from the geometry, at five angles;
+  \item a 0--30\,$^\circ$ limit from two face datums stops a drag at 30 and at 0 measured face to face;
+  \item no datums gives zero offsets;
+  \item a joint moves the part by default, and with \emph{Keep parts where they are} it does not move it, even after a
+        solve, and still turns about the joint.
+\end{itemize}
+The panel itself (checkbox, \emph{Pick datums}, reading) needs the screen: steps 14 and 16 of
+section~\ref{sec:tonight}.
+
+\paragraph{Still in \eref{ASM-03}.} Quick joint with type inference, pin-slot, limit sliders in the 3D view, datums on
+the assembly origin or a third part (today both datums are on the joint's own two parts), and continuous angles past
+$\pm 180\,^\circ$ (today a limit range lies within one turn).
