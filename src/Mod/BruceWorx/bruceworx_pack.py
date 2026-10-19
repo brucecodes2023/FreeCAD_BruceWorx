@@ -599,6 +599,22 @@ class MemoryStore:
             del self._data[(path, name)]
 
 
+def param_fallback(typ: str, default):
+    """Value passed to ParamGet.Get* when the caller has no default.
+
+    ``int(None)`` and ``float(None)`` raise. Snapshot reads use ``None`` for a
+    key that is already stored, so the fallback is never the saved value, but
+    it still has to be a legal number.
+    """
+    if typ == "bool":
+        return False if default is None else bool(default)
+    if typ in ("int", "uint"):
+        return 0 if default is None else int(default)
+    if typ == "float":
+        return 0.0 if default is None else float(default)
+    return "" if default is None else str(default)
+
+
 class FreeCADStore:
     """Adapter over ``App.ParamGet("User parameter:...")``."""
 
@@ -624,14 +640,14 @@ class FreeCADStore:
     def get(self, path: str, name: str, typ: str, default):
         group = self._group(path)
         if typ == "bool":
-            return bool(group.GetBool(name, bool(default)))
+            return bool(group.GetBool(name, param_fallback(typ, default)))
         if typ == "int":
-            return int(group.GetInt(name, int(default)))
+            return int(group.GetInt(name, param_fallback(typ, default)))
         if typ == "uint":
-            return int(group.GetUnsigned(name, int(default)))
+            return int(group.GetUnsigned(name, param_fallback(typ, default)))
         if typ == "float":
-            return float(group.GetFloat(name, float(default)))
-        return str(group.GetString(name, "" if default is None else str(default)))
+            return float(group.GetFloat(name, param_fallback(typ, default)))
+        return str(group.GetString(name, param_fallback("text", default)))
 
     def set(self, path: str, name: str, typ: str, value) -> None:
         group = self._group(path)

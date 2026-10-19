@@ -1,7 +1,7 @@
 /* [BW] FCB-P1F-07. Applied only while Preferences/BruceWorx/FloatingModelTree is on.
    Semi-transparent left overlay (the model tree). Other overlay sides stay readable
    if they share this sheet for that time. Literal colors: this file replaces the
-   overlay sheet, so theme @variables are not assumed. */
+   overlay sheet. Theme color tokens are not used here. */
 
 Gui--OverlayTabWidget#OverlayLeft {
   background-color: rgba(32, 34, 38, 170);

@@ -29,6 +29,15 @@ def _read(path: str) -> str:
 
 
 class RestoreTest(unittest.TestCase):
+    def test_snapshot_read_accepts_a_missing_number(self):
+        # First-run snapshot calls get(..., None) for keys the user already has.
+        # int(None) used to abort the pack before those keys were recorded.
+        self.assertEqual(pack.param_fallback("int", None), 0)
+        self.assertEqual(pack.param_fallback("uint", None), 0)
+        self.assertEqual(pack.param_fallback("float", None), 0.0)
+        self.assertIs(pack.param_fallback("bool", None), False)
+        self.assertEqual(pack.param_fallback("int", 4), 4)
+
     def test_enable_then_off_restores_stock_and_user_values(self):
         store = pack.MemoryStore()
         store.set("BaseApp/Preferences/Units", "UserSchema", "int", 4)

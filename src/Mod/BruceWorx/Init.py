@@ -4,3 +4,4 @@
 import FreeCAD
 
 FreeCAD.__unit_test__.append("TestBruceWorx")
+FreeCAD.__unit_test__.append("TestBruceWorxPattern")

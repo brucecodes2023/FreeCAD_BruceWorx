@@ -166,9 +166,11 @@ LinearPattern::LinearPattern()
         "The distance between each instance of the pattern in the second direction. "
         "This is only used when the Mode is set to 'Spacing'."
     );
+    // [BW] ({}) picked setValue(double{}) and stored [0.0], so the first gap of
+    // direction 2 was zero and one row landed on the original.
     ADD_PROPERTY_TYPE(
         Spacings2,
-        ({}),
+        ({-1.0}),
         "Direction 2",
         App::Prop_None,
         "A list of custom spacings for the second direction. If a value is -1, the global 'Offset' "
@@ -194,6 +196,7 @@ LinearPattern::LinearPattern()
     Occurrences2.setConstraints(&intOccurrences);
     Mode2.setEnums(ModeEnums);
     setReadWriteStatusForMode(LinearPatternDirection::Second);
+    updateSpacings(LinearPatternDirection::Second);
 }
 
 short LinearPattern::mustExecute() const
@@ -485,13 +488,24 @@ void LinearPattern::updateSpacings(LinearPatternDirection dir)
     size_t targetCount = occurrencesProp.getValue()
         - 1;  // 1 less spacing than there are occurrences.
 
+    // [BW] A zero gap always puts an instance on top of the previous one, so it
+    // is never meaningful. Files saved with the old [0.0] default for Spacings2
+    // carry one; map it to -1 (use the global offset) and store the repair.
+    bool repaired = false;
     for (auto& spacing : spacings) {
-        if (spacing == offsetProp.getValue()) {
+        if (spacing == 0.0) {
+            spacing = -1.0;
+            repaired = true;
+        }
+        else if (spacing == offsetProp.getValue()) {
             spacing = -1.0;
         }
     }
 
     if (spacings.size() == targetCount) {
+        if (repaired) {
+            spacingsProp.setValues(spacings);
+        }
         return;
     }
     if (spacings.size() < targetCount) {

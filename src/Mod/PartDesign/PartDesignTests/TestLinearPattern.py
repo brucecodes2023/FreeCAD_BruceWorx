@@ -58,6 +58,50 @@ class TestLinearPattern(unittest.TestCase):
         # self.assertEqual(self.LinearPattern.Shape.ElementMapSize, 170)    # TODO
         self.assertEqual(self.LinearPattern.Shape.ElementMapSize, 26)
 
+    def _twoDirectionGrid(self, mode):
+        """3 x 3 grid of touching 10 mm boxes, so the body stays one solid."""
+        self.Body = self.Doc.addObject("PartDesign::Body", "Body")
+        self.Box = self.Doc.addObject("PartDesign::AdditiveBox", "Box")
+        self.Body.addObject(self.Box)
+        self.Box.Length = 10.00
+        self.Box.Width = 10.00
+        self.Box.Height = 10.00
+        self.Doc.recompute()
+        pattern = self.Doc.addObject("PartDesign::LinearPattern", "LinearPattern")
+        pattern.Originals = [self.Box]
+        pattern.Direction = (self.Doc.X_Axis, [""])
+        pattern.Direction2 = (self.Doc.Y_Axis, [""])
+        for suffix in ("", "2"):
+            setattr(pattern, "Mode" + suffix, mode)
+            setattr(pattern, "Occurrences" + suffix, 3)
+            if mode == "Spacing":
+                setattr(pattern, "Offset" + suffix, 10.0)
+            else:
+                setattr(pattern, "Length" + suffix, 20.0)
+        pattern.Refine = True
+        self.Body.addObject(pattern)
+        return pattern
+
+    def testTwoDirectionSpacingMakesEveryRow(self):
+        # [BW] Spacings2 used to default to [0.0], which dropped one row.
+        pattern = self._twoDirectionGrid("Spacing")
+        self.Doc.recompute()
+        self.assertAlmostEqual(pattern.Shape.Volume, 9000.0)
+        self.assertEqual(list(pattern.Spacings2), [-1.0, -1.0])
+
+    def testTwoDirectionExtentMakesEveryRow(self):
+        pattern = self._twoDirectionGrid("Extent")
+        self.Doc.recompute()
+        self.assertAlmostEqual(pattern.Shape.Volume, 9000.0)
+
+    def testZeroSpacingFromOldFilesIsRepaired(self):
+        # [BW] Files saved before the fix carry Spacings2 = [0.0, -1.0].
+        pattern = self._twoDirectionGrid("Spacing")
+        pattern.Spacings2 = [0.0, -1.0]
+        self.Doc.recompute()
+        self.assertAlmostEqual(pattern.Shape.Volume, 9000.0)
+        self.assertEqual(list(pattern.Spacings2), [-1.0, -1.0])
+
     def testYAxisLinearPattern(self):
         self.Body = self.Doc.addObject("PartDesign::Body", "Body")
         self.Box = self.Doc.addObject("PartDesign::AdditiveBox", "Box")

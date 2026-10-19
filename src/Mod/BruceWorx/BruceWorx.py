@@ -176,7 +176,9 @@ def _apply_tree(prefs, overlay_root, style_group, qss_path, tree_names):
     top = _read_int(prefs, "FloatingModelTreeTopOffset", DEFAULT_TOP_OFFSET)
     bottom = _read_int(prefs, "FloatingModelTreeBottomInset", DEFAULT_BOTTOM_INSET)
     left = _read_int(prefs, "FloatingModelTreeLeftInset", DEFAULT_LEFT_INSET)
-    auto_hide = bool(prefs.GetBool("FloatingModelTreeAutoHide", True))
+    # Off by default: like Fusion's Browser, the tree stays on screen. With
+    # auto-hide on it only appears when the pointer reaches the left edge.
+    auto_hide = bool(prefs.GetBool("FloatingModelTreeAutoHide", False))
     transparent = bool(prefs.GetBool("FloatingModelTreeTransparent", True))
 
     for side in SIDES:

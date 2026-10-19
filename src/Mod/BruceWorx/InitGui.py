@@ -7,6 +7,7 @@ Preferences → BruceWorx. This file:
 * applies the BruceWorx preference pack on first start (bruceworx_defaults),
 * installs the preference page and the overlay model tree (default on),
 * starts the ground grid, which shows only while the preference pack is applied,
+* registers the Rectangular / Circular Pattern commands (bruceworx_pattern_gui),
 * creates the shared top-level BruceWorx menu (bruceworx_menu).
 
 It runs before the startup workbench is activated, so the first-run pack's
@@ -48,3 +49,10 @@ try:
     ground_grid.startup()
 except Exception as exc:  # pragma: no cover - FreeCAD console only
     _bw_warn(f"BruceWorx ground grid was not started: {exc}")
+
+try:
+    import bruceworx_pattern_gui
+
+    bruceworx_pattern_gui.install()
+except Exception as exc:  # pragma: no cover - FreeCAD console only
+    _bw_warn(f"BruceWorx pattern commands were not installed: {exc}")

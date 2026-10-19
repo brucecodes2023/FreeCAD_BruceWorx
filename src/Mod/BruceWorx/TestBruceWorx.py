@@ -130,6 +130,16 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(left.GetString("Widgets"), "Report view,")
         self.assertEqual(style.GetString(BruceWorx.STYLE_KEY), "kept.qss")
 
+    def test_tree_stays_visible_by_default(self):
+        # A profile that got AutoHide=1 from the old default is pinned again on
+        # the next sync, because the preference itself was never written.
+        prefs, overlay, style, docks = _world()
+        left = overlay.GetGroup("OverlayLeft")
+        left.SetBool("AutoHide", True)
+        state = BruceWorx.sync(prefs, overlay, style, QSS, BruceWorx.tree_dock_names(docks))
+        self.assertEqual(state, "on")
+        self.assertFalse(left.GetBool("AutoHide"))
+
     def test_explicit_off_before_apply_leaves_stock(self):
         prefs, overlay, style, docks = _world()
         prefs.SetBool("FloatingModelTree", False)
