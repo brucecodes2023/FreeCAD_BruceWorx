@@ -26,11 +26,15 @@ SET(BruceWorxHooks_SRCS
     bruceworx/gui.py
     bruceworx/macro.py
     bruceworx/numbering.py
+    bruceworx/partprops.py
+    bruceworx/pdm.py
+    bruceworx/pdm_folder.py
     bruceworx/sources.py
     bruceworx/step_export.py
     bruceworx/tree.py
     config/document_types.json
     config/numbering.example.json
+    config/part_properties.json
     macros/PartNumber.FCMacro
 )
 
@@ -62,13 +66,16 @@ INSTALL(
         bruceworx/gui.py
         bruceworx/macro.py
         bruceworx/numbering.py
+        bruceworx/partprops.py
+        bruceworx/pdm.py
+        bruceworx/pdm_folder.py
         bruceworx/sources.py
         bruceworx/step_export.py
         bruceworx/tree.py
     DESTINATION Mod/BruceWorxHooks/bruceworx
 )
 INSTALL(
-    FILES config/document_types.json config/numbering.example.json
+    FILES config/document_types.json config/numbering.example.json config/part_properties.json
     DESTINATION Mod/BruceWorxHooks/config
 )
 INSTALL(FILES macros/PartNumber.FCMacro DESTINATION Mod/BruceWorxHooks/macros)

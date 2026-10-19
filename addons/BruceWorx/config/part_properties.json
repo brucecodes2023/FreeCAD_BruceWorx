@@ -1,0 +1,27 @@
+{
+  "schema": "bruceworx.part-properties",
+  "version": 1,
+  "group": "BruceWorx",
+  "note": "Built-in part properties. Add your own in another layer (see bruceworx/partprops.py) instead of editing this file.",
+  "properties": [
+    {"name": "PartNumber", "type": "string", "bom": true, "source": "pdm", "readonly": true,
+     "doc": "Part number without revision; set by the vault"},
+    {"name": "Revision", "type": "string", "bom": true, "source": "pdm", "readonly": true,
+     "doc": "Current revision (01, 02 ... before release; A, B ... after); set by the vault"},
+    {"name": "Description", "type": "string", "bom": true, "required": "submit",
+     "doc": "Title block and BOM description"},
+    {"name": "ItemType", "type": "enum", "values": ["part", "assembly", "cots", "drawing"], "default": "part",
+     "doc": "What the vault treats this as"},
+    {"name": "MaterialName", "type": "string", "bom": true, "source": "computed:material", "readonly": true,
+     "required": "submit", "doc": "Name of the material assigned to the bodies"},
+    {"name": "Finish", "type": "string", "bom": true,
+     "doc": "Surface finish or coating"},
+    {"name": "Mass", "type": "mass", "bom": true, "source": "computed:mass", "readonly": true,
+     "doc": "Volume times material density, summed over the bodies"},
+    {"name": "Vendor", "type": "string",
+     "doc": "Supplier, for COTS and purchased parts"},
+    {"name": "VendorPartNumber", "type": "string",
+     "doc": "Supplier's part number"}
+  ],
+  "renamed": {}
+}

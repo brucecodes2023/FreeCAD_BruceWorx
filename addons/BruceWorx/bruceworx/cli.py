@@ -28,7 +28,11 @@ from bruceworx.sources import open_number_source
 from bruceworx.step_export import export_step
 from bruceworx.tree import document_tree
 
-COMMANDS = ("export-step", "list-tree", "rename", "next", "preview")
+COMMANDS = ("export-step", "list-tree", "rename", "next", "preview", "vault")
+VAULT_ACTIONS = (
+    "init", "status", "create", "checkout", "checkin", "undo-checkout",
+    "submit", "approve", "reject", "fetch",
+)
 _ENTRY_NAMES = {"hooks.py", "hooks"}
 
 
@@ -99,6 +103,19 @@ def build_parser() -> argparse.ArgumentParser:
     preview.add_argument("--config", default="")
     preview.add_argument("--revision", default="")
     preview.add_argument("--parent", default="", help="Existing parent drawing (PPPPP)")
+
+    vault = sub.add_parser("vault", help="Folder PDM vault (no FreeCAD needed)")
+    vault.add_argument("action", choices=VAULT_ACTIONS)
+    vault.add_argument("--vault", required=True, help="Vault folder or its .bwvault ref file")
+    vault.add_argument("--name", default="", help="init: vault name (default: folder name)")
+    vault.add_argument("--pn", default="", help="Part number, without revision")
+    vault.add_argument("--type", default="part", help="create: part, assembly, drawing or cots")
+    vault.add_argument("--description", default="")
+    vault.add_argument("--drawing-of", default="", help="create: the part a drawing documents")
+    vault.add_argument("--file", default="", help="checkin: the saved .FCStd")
+    vault.add_argument("--workspace", default="", help="checkout/fetch: copy the file here")
+    vault.add_argument("--comment", default="", help="checkin comment or reject reason")
+    vault.add_argument("--actor", default="", help="Who is acting (default: user@host)")
     return parser
 
 
@@ -116,6 +133,8 @@ def main(argv: list[str] | None = None) -> int:
             return _number_command(args, allocate=True)
         if args.command == "preview":
             return _number_command(args, allocate=False)
+        if args.command == "vault":
+            return _vault_command(args)
         print(f"error: unknown command {args.command}", file=sys.stderr)
         return 2
     except SystemExit as exc:
@@ -289,6 +308,48 @@ def _number_command(args, *, allocate: bool) -> int:
             "config": path,
         }
     )
+    return 0
+
+
+def _vault_command(args) -> int:
+    from bruceworx.pdm_folder import FolderVault  # noqa: PLC0415
+
+    actor = args.actor or None
+    if args.action == "init":
+        name = args.name or os.path.basename(os.path.abspath(args.vault))
+        vault = FolderVault.init(args.vault, name, actor=actor)
+        emit({"ok": True, "command": "vault init", "ref": vault.ref_path, "vault_id": vault.ref["vault_id"]})
+        return 0
+    vault = FolderVault(args.vault, actor=actor)
+    payload = {"ok": True, "command": f"vault {args.action}"}
+    if args.action != "status":
+        if not args.pn:
+            raise ValueError(f"vault {args.action} needs --pn")
+        payload["part_number"] = args.pn
+    if args.action == "create":
+        vault.create_item(args.pn, args.type, args.description, args.drawing_of or None)
+    elif args.action == "checkout":
+        payload["path"] = vault.checkout(args.pn, workspace=args.workspace or None)
+    elif args.action == "checkin":
+        if not args.file:
+            raise ValueError("vault checkin needs --file")
+        payload["sha256"] = vault.checkin(args.pn, args.file, args.comment).sha256
+    elif args.action == "undo-checkout":
+        vault.undo_checkout(args.pn)
+    elif args.action == "submit":
+        vault.submit(args.pn)
+    elif args.action == "approve":
+        vault.approve(args.pn)
+    elif args.action == "reject":
+        vault.reject(args.pn, args.comment)
+    elif args.action == "fetch":
+        payload["path"] = vault.fetch(args.pn, args.workspace or os.getcwd())
+    if args.action == "status":
+        payload.update(vault.status())
+    elif args.pn in vault.items:
+        payload["revision"] = vault.items[args.pn].latest.code
+        payload["state"] = vault.items[args.pn].latest.state
+    emit(payload)
     return 0
 
 
