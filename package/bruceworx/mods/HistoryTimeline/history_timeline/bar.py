@@ -21,9 +21,21 @@ _LABEL = "#f2f2f2"
 _MARKER = "#f5c400"
 _SLASH = "#ff5d5d"
 
+# Previous bar reserved 112px and the dock stretched to match. One third of
+# that still fits a single row of feature chips.
+RIBBON_HEIGHT = 112 // 3
+
 
 def _align_center():
     return qt_enum(QtCore.Qt, ("AlignmentFlag", "AlignCenter"), ("AlignCenter",))
+
+
+def _align_vcenter():
+    return qt_enum(QtCore.Qt, ("AlignmentFlag", "AlignVCenter"), ("AlignVCenter",))
+
+
+def _align_left():
+    return qt_enum(QtCore.Qt, ("AlignmentFlag", "AlignLeft"), ("AlignLeft",))
 
 
 def _pointing_hand():
@@ -149,7 +161,7 @@ class FeatureButton(QtWidgets.QWidget):
         super().__init__(parent)
         self.entry = entry
         self.setObjectName(f"HistoryTimeline_{entry.name}")
-        self.setFixedSize(78, 72)
+        self.setFixedSize(96, RIBBON_HEIGHT - 6)
         self.setCursor(_pointing_hand())
         self.setMouseTracking(True)
         self._suppress_release = False
@@ -168,9 +180,9 @@ class FeatureButton(QtWidgets.QWidget):
         )
         icon = getattr(entry, "icon", None)
         if icon is not None:
-            self._pixmap = icon.pixmap(QtCore.QSize(32, 32))
+            self._pixmap = icon.pixmap(QtCore.QSize(16, 16))
         else:
-            self._pixmap = glyph(entry.kind)
+            self._pixmap = glyph(entry.kind, 16)
 
     def paintEvent(self, _event):
         painter = QtGui.QPainter(self)
@@ -181,24 +193,25 @@ class FeatureButton(QtWidgets.QWidget):
         border = QtGui.QColor(_TIP if self.entry.is_tip else _BUTTON_BORDER)
         painter.setPen(QtGui.QPen(border, 2 if self.entry.is_tip else 1))
         painter.setBrush(fill)
-        painter.drawRoundedRect(self.rect().adjusted(2, 2, -3, -3), 5, 5)
-        painter.drawPixmap(23, 8, self._pixmap)
+        painter.drawRoundedRect(self.rect().adjusted(1, 1, -2, -2), 4, 4)
+        painter.drawPixmap(4, (self.height() - self._pixmap.height()) // 2, self._pixmap)
         painter.setPen(QtGui.QColor(_LABEL))
         font = painter.font()
         font.setPointSize(8)
         painter.setFont(font)
         label = self.entry.label
-        if len(label) > 10:
-            label = label[:9] + "…"
+        if len(label) > 8:
+            label = label[:7] + "…"
+        align = _align_vcenter() | _align_left()
         painter.drawText(
-            QtCore.QRect(4, 44, self.width() - 8, 22),
-            _align_center(),
+            QtCore.QRect(22, 0, self.width() - 26, self.height()),
+            align,
             label,
         )
         if self.entry.suppressed:
             painter.setOpacity(1.0)
             painter.setPen(QtGui.QPen(QtGui.QColor(_SLASH), 2))
-            painter.drawLine(16, 40, self.width() - 16, 10)
+            painter.drawLine(8, self.height() - 6, self.width() - 8, 6)
         painter.end()
 
     def mouseReleaseEvent(self, event):
@@ -271,7 +284,8 @@ class TimelineBar(QtWidgets.QWidget):
         self.setObjectName("HistoryTimelineBar")
         self.setAttribute(_styled_bg(), True)
         self.setStyleSheet(f"QWidget#HistoryTimelineBar {{ background: {_BG}; }}")
-        self.setMinimumHeight(112)
+        self.setFixedHeight(RIBBON_HEIGHT)
+        self.setToolTip("Click rolls the tip · double-click edits · right-click to suppress")
 
         self._title = QtWidgets.QLabel("History")
         self._title.setStyleSheet(f"color: {_HEADER}; font-weight: 600;")
@@ -280,15 +294,10 @@ class TimelineBar(QtWidgets.QWidget):
         )
         self._hint.setStyleSheet(f"color: {_HINT};")
         self._hint.setObjectName("HistoryTimelineHint")
-
-        header = QtWidgets.QHBoxLayout()
-        header.setContentsMargins(10, 6, 10, 0)
-        header.addWidget(self._title)
-        header.addStretch(1)
-        header.addWidget(self._hint)
+        self._hint.hide()
 
         self._row = QtWidgets.QHBoxLayout()
-        self._row.setContentsMargins(8, 4, 8, 6)
+        self._row.setContentsMargins(4, 0, 4, 0)
         self._row.setSpacing(4)
         row_host = QtWidgets.QWidget()
         row_host.setLayout(self._row)
@@ -302,13 +311,13 @@ class TimelineBar(QtWidgets.QWidget):
         scroll.setWidget(row_host)
         scroll.setStyleSheet(
             f"QScrollArea {{ background: {_BG}; border: none; }}"
-            f"QScrollBar:horizontal {{ height: 8px; background: {_BG}; }}"
+            f"QScrollBar:horizontal {{ height: 6px; background: {_BG}; }}"
         )
 
-        outer = QtWidgets.QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(0)
-        outer.addLayout(header)
+        outer = QtWidgets.QHBoxLayout(self)
+        outer.setContentsMargins(8, 2, 4, 2)
+        outer.setSpacing(6)
+        outer.addWidget(self._title)
         outer.addWidget(scroll, 1)
 
         self._pending_name = None
@@ -336,7 +345,7 @@ class TimelineBar(QtWidgets.QWidget):
         if not entries:
             message = empty_message or "No PartDesign body in the active document."
             label = QtWidgets.QLabel(message)
-            label.setStyleSheet(f"color: {_HINT}; padding: 12px;")
+            label.setStyleSheet(f"color: {_HINT}; padding: 0px 8px;")
             self._row.addWidget(label)
             self._row.addStretch(1)
             return

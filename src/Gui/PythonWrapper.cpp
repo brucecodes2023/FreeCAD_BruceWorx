@@ -22,6 +22,7 @@
 
 
 #include <limits>
+#include <type_traits>
 #include <unordered_map>
 #include <list>
 #include <QAction>
@@ -330,6 +331,103 @@ static bool loadPySideModule(const std::string& moduleName, PyTypeObject**& type
 }
 
 #if defined(HAVE_SHIBOKEN) && defined(HAVE_PYSIDE)
+
+// PySide 6.8 builds wrapper types lazily (PYSIDE-2404). typeForTypeName()
+// stays null until that class has been created, and fromQWidget() then throws
+// "Failed to wrap widget". Every InitGui that calls getMainWindow() aborts,
+// which is why the ribbon and toolbars never come back after a workbench
+// switch. Import the module and touch the class first.
+template<typename qttype>
+const char* pySideModuleName()
+{
+    if constexpr (std::is_same_v<qttype, QWidget> || std::is_same_v<qttype, QApplication>
+                  || std::is_same_v<qttype, QGraphicsItem> || std::is_same_v<qttype, QGraphicsObject>) {
+        return "QtWidgets";
+    }
+    else if constexpr (std::is_same_v<qttype, QImage> || std::is_same_v<qttype, QIcon>
+                       || std::is_same_v<qttype, QAction>) {
+        return "QtGui";
+    }
+    else if constexpr (std::is_same_v<qttype, QPrinter>) {
+        return "QtPrintSupport";
+    }
+    else {
+        return "QtCore";
+    }
+}
+
+template<typename qttype>
+const char* pySideClassName()
+{
+    if constexpr (std::is_same_v<qttype, QWidget>) {
+        return "QWidget";
+    }
+    else if constexpr (std::is_same_v<qttype, QObject>) {
+        return "QObject";
+    }
+    else if constexpr (std::is_same_v<qttype, QApplication>) {
+        return "QApplication";
+    }
+    else if constexpr (std::is_same_v<qttype, QImage>) {
+        return "QImage";
+    }
+    else if constexpr (std::is_same_v<qttype, QIcon>) {
+        return "QIcon";
+    }
+    else if constexpr (std::is_same_v<qttype, QDir>) {
+        return "QDir";
+    }
+    else if constexpr (std::is_same_v<qttype, QAction>) {
+        return "QAction";
+    }
+    else if constexpr (std::is_same_v<qttype, QPrinter>) {
+        return "QPrinter";
+    }
+    else if constexpr (std::is_same_v<qttype, QGraphicsItem>) {
+        return "QGraphicsItem";
+    }
+    else if constexpr (std::is_same_v<qttype, QGraphicsObject>) {
+        return "QGraphicsObject";
+    }
+    else {
+        return nullptr;
+    }
+}
+
+template<typename qttype>
+PyTypeObject* realizePySideType()
+{
+    const char* className = pySideClassName<qttype>();
+    const char* moduleName = pySideModuleName<qttype>();
+    if (!className || !moduleName) {
+        return nullptr;
+    }
+
+    Shiboken::AutoDecRef module(Shiboken::Module::import(getPySideModuleName(moduleName).c_str()));
+    if (module.isNull()) {
+        PyErr_Clear();
+        return nullptr;
+    }
+
+#if SHIBOKEN_FULL_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    // Older Shiboken has no lazy-class table. getattr below is what creates the type.
+    Shiboken::Module::loadLazyClassesWithName(className);
+#endif
+    Shiboken::AutoDecRef attr(PyObject_GetAttrString(module, className));
+    if (attr.isNull()) {
+        PyErr_Clear();
+    }
+
+    auto type = Shiboken::ObjectType::typeForTypeName(typeid(qttype).name());
+    if (!type) {
+        type = Shiboken::Conversions::getPythonTypeObject(className);
+    }
+    if (!type && !attr.isNull() && PyType_Check(attr.object())) {
+        type = reinterpret_cast<PyTypeObject*>(attr.object());
+    }
+    return type;
+}
+
 template<typename qttype>
 # if defined(HAVE_SHIBOKEN2)
 SbkObjectType*
@@ -343,7 +441,11 @@ getPyTypeObjectForTypeName()
     auto sbkType = Shiboken::ObjectType::typeForTypeName(typeid(qttype).name());
     return reinterpret_cast<SbkObjectType*>(&sbkType->type);
 #  else
-    return Shiboken::ObjectType::typeForTypeName(typeid(qttype).name());
+    auto type = Shiboken::ObjectType::typeForTypeName(typeid(qttype).name());
+    if (!type) {
+        type = realizePySideType<qttype>();
+    }
+    return type;
 #  endif
 # else
 #  if defined(HAVE_SHIBOKEN2)

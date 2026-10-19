@@ -13,7 +13,7 @@ from __future__ import annotations
 import FreeCAD
 
 from history_timeline import model
-from history_timeline.bar import TimelineBar
+from history_timeline.bar import RIBBON_HEIGHT, TimelineBar
 from history_timeline.qtcompat import load_qt, qt_enum
 
 QtCore, QtGui, QtWidgets = load_qt()
@@ -127,6 +127,23 @@ class HistoryTimelineDock(QtWidgets.QDockWidget):
         self._bar.editRequested.connect(self._edit)
         self._bar.contextMenuRequested.connect(self._popup)
         self.setWidget(self._bar)
+        # Title bar plus the ribbon. A restored window state cannot stretch
+        # this dock back to the old tall size.
+        title = self.style().pixelMetric(
+            qt_enum(QtWidgets.QStyle, ("PixelMetric", "PM_TitleBarHeight"), ("PM_TitleBarHeight",))
+        )
+        if title <= 0:
+            title = 22
+        frame = self.style().pixelMetric(
+            qt_enum(
+                QtWidgets.QStyle,
+                ("PixelMetric", "PM_DockWidgetFrameWidth"),
+                ("PM_DockWidgetFrameWidth",),
+            )
+        )
+        dock_height = RIBBON_HEIGHT + title + max(frame, 0) * 2
+        self.setMinimumHeight(dock_height)
+        self.setMaximumHeight(dock_height)
         self._refresh_timer = QtCore.QTimer(self)
         self._refresh_timer.setSingleShot(True)
         self._refresh_timer.setInterval(0)

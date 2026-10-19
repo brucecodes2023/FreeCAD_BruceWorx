@@ -192,5 +192,5 @@ install-debug = { cmd = ["cmake", "--install", "build/debug"]}
 install-release = { cmd = ["cmake", "--install", "build/release"]}
 test-debug = { cmd = ["ctest", "--test-dir", "build/debug"]}
 test-release = { cmd = ["ctest", "--test-dir", "build/release"]}
-freecad-debug = "build/debug/bin/FreeCAD"
-freecad-release = "build/release/bin/FreeCAD"
+freecad-debug = "bash package/bruceworx/run-freecad.sh debug"
+freecad-release = "bash package/bruceworx/run-freecad.sh release"
