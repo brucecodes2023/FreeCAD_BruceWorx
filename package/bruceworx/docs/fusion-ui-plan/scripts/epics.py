@@ -367,7 +367,7 @@ EPICS = [
       "FCB-P1V-08/09/13/14/15",
       "Matcap draw style behind a preference.",
       "Pref off renders stock; light/dark screenshots."),
-    E("UIX-09", "Fresh UI design & re-render figures", "UI", "To do", ["UIX-05"],
+    E("UIX-09", "Fresh UI design & re-render figures", "UI", "In progress", ["UIX-05"],
       "(new)",
       "New visual design for the whole app; regenerate all roadmap figures.",
       "Design approved; figures regenerated."),

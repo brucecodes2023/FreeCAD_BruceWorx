@@ -76,7 +76,7 @@ BW-UIX-05,UI & styling,Workspaces & tabs (Fusion naming),UI,UI & styling pass (a
 BW-UIX-06,UI & styling,Toolbar & panels,UI,UI & styling pass (after M2),To do,BW-UIX-05,"(new, UI plan)","Captioned groups, floating command dialog, document tabs on top, one-row timeline.",Matches the redesigned mock at two resolutions.
 BW-UIX-07,UI & styling,Task panel polish,UI,UI & styling pass (after M2),To do,,FCB-P1-06/07/08,"Sketcher, PartDesign and TechDraw dialogs.",Before/after gallery approved.
 BW-UIX-08,UI & styling,Matcap shading,UI,UI & styling pass (after M2),To do,,FCB-P1V-08/09/13/14/15,Matcap draw style behind a preference.,Pref off renders stock; light/dark screenshots.
-BW-UIX-09,UI & styling,Fresh UI design & re-render figures,UI,UI & styling pass (after M2),To do,BW-UIX-05,(new),New visual design for the whole app; regenerate all roadmap figures.,Design approved; figures regenerated.
+BW-UIX-09,UI & styling,Fresh UI design & re-render figures,UI,UI & styling pass (after M2),In progress,BW-UIX-05,(new),New visual design for the whole app; regenerate all roadmap figures.,Design approved; figures regenerated.
 BW-KRN-01,Kernel study,OCCT coupling survey,BG,Background study,To do,,FCB-P3-01..06,"Count OCCT use per module, TNP/element-map dependencies, Python exposure; option A note.",Coupling report published.
 BW-KRN-02,Kernel study,STEP exchange harness,BG,Background study,To do,BW-FND-05,FCB-P3-07..11,"Separate harness repo, LE corpus, round-trip metrics, CI.",Harness runs on Linux CI.
 BW-KRN-03,Kernel study,Kernel decision,BG,Background study,To do,BW-KRN-01 BW-KRN-02,FCB-P3-12/13/14,A/B/C memo with effort estimates; gate.,Direction picked.
