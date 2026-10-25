@@ -88,3 +88,75 @@ Push connector and mounting-hole positions from MCAD to ECAD and back. Check boa
 interference command (\eref{ASM-06}).
 \emph{Acceptance:} the fit check flags a connector moved into a wall.
 \end{epic}
+
+%======================================================================
+\section{Track WIR --- Wire routing}\label{sec:wir}
+%======================================================================
+
+Servo arms, quad power leads and board-to-ESC runs need a wire that can be seen, measured and moved with
+the joint. Fusion~360 has no harness product. This track is SolidWorks electrical-routing parity plus that
+robotics need. It sits on M3 and M5, after joints exist (\eref{ASM-03}), and it stays off the M1 path that
+models \code{LE-02001}.
+
+The tube is ordinary FreeCAD. \code{Part.Wire.makePipeShell} sweeps a circle along a centerline, and
+Draft's \code{filletWire} rounds every corner of a polyline to an exact radius. The centerline is that
+polyline: a straight lead-out along the port's local $+Z$, then the clips, with each corner filleted.
+The fillet radius is the minimum bend radius, and the centerline length is the cut length. Fillets hold
+that minimum exactly, which a free B-spline cannot. BIM pipes are the same sweep at building scale and are
+tied to IFC; they do not follow assembly links. The wire is its own \code{Part::FeaturePython}.
+
+A port is an \code{App::LocalCoordinateSystem}, the same kind of datum as the mounting LCS in
+\eref{ROB-01}. End placements come from \code{UtilsAssembly.getGlobalPlacement}, which already resolves a
+link chain through \code{getPlacementOf}. A datum stays put when the model is edited; a face pick does not.
+When \eref{WIR-02} starts, the add-on lives at \file{package/bruceworx/mods/WireRouting/}, installed the
+same way as the History Timeline. Python only, no C++.
+
+Following a joint is the part that takes care. The wire lives in the assembly, both ends are ports on
+links, and a recompute after the solver moves a link rebuilds the centerline. Bundles are a small graph:
+several wires share a sleeve, then break out. Clip-graph routing is a shortest path through clips the user
+already placed, keeping a segment only when its fillet succeeds. Two commercial features stay off this
+track: free-space auto-route through an obstacle mesh, and a flattened nailboard drawing. A fillet that
+cannot be built is the bend-radius check. Clearance of the finished solid can later reuse
+\eref{ASM-06}.
+
+\eref{WIR-01} is a short adopt-versus-build spike, the same shape as \eref{ECD-01}. Try the community
+Cables workbench on an assembly with two moving links, then write the decision down. Those add-ons route
+inside one document. The spike is there so a workbench that cannot follow an \code{Assembly} joint is not
+vendored. The expected result is to build.
+
+\begin{epic}{WIR-01}{Adopt versus build}{M3}{\stTodo}{(new)}
+Try the community Cables workbench on an assembly with two moving links. Record the decision: adopt it
+unmodified, or build the Python add-on described above.
+\emph{Acceptance:} the decision memo is written.
+\end{epic}
+
+\begin{epic}{WIR-02}{Port and wire}{M3}{\stTodo}{(new)}
+A port datum, a straight lead-out along local $+Z$, \code{filletWire} at the minimum bend radius, a circle
+swept with \code{makePipeShell}, and a read-only length.
+\emph{Acceptance:} a three-corner wire matches the analytic line-plus-arc length within 0.01\,mm. A corner
+tighter than the radius fails the check and produces no solid.
+\end{epic}
+
+\begin{epic}{WIR-03}{Assembly follow}{M3}{\stTodo}{(new)}
+The wire lives in the assembly. Both ends are ports on links, and a recompute after the solver moves a
+link rebuilds the centerline. Depends on \eref{WIR-02} and \eref{ASM-03}.
+\emph{Acceptance:} dragging a revolute joint updates the length, and both ends stay on their ports.
+\end{epic}
+
+\begin{epic}{WIR-04}{From-to cut list}{M3}{\stTodo}{(new)}
+Gauge, color, from, to and length for each wire. The assembly BOM (\eref{ASM-04}) carries the same rows.
+\emph{Acceptance:} the cut list matches the wire lengths, and the BOM carries the rows.
+\end{epic}
+
+\begin{epic}{WIR-05}{Clips and bundles}{M5}{\stTodo}{(new)}
+Clips are waypoints. A bundle is a shared sleeve with a breakout: several wires share a middle segment,
+then split to their own ports. Depends on \eref{WIR-03}.
+\emph{Acceptance:} two wires share one middle segment and split to two ports; the sleeve length is that
+segment.
+\end{epic}
+
+\begin{epic}{WIR-06}{Route on the clip graph}{M5}{\stTodo}{(new)}
+A from-to list becomes a shortest feasible path through clips the user placed. A segment is feasible when
+its fillet succeeds. Board pins become ports only after \eref{ECD-04}; this epic does not wait on that.
+\emph{Acceptance:} a three-clip fixture picks the shorter feasible path and reports its length.
+\end{epic}
