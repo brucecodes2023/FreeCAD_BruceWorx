@@ -12,7 +12,7 @@ Part numbers look like `LE-01-01001-001-A`: `{PROG}-{DT}-{PPPPP}-{SSS}-{REV}`.
 | Path | Role |
 |---|---|
 | `hooks.py` | CLI entry point (FCB-P2-14) |
-| `bruceworx/` | Library: numbering, JSON source, tree, STEP export |
+| `bruceworx/` | Library: numbering, JSON source, tree, STEP export, one part per file |
 | `config/document_types.json` | Editable document-type codes (placeholders until Bruce fills them in) |
 | `config/numbering.example.json` | Committed counter template |
 | `config/numbering.json` | Local counter, created on first `next` or `rename` (not committed) |
@@ -137,6 +137,84 @@ Pass `--parent` to take the next sub-assembly under that drawing.
 Prints the next number. Does not write.
 
 Exit codes: `0` success, `2` usage, `1` error.
+
+## One part per file (BW-ASM-01)
+
+Every part is its own `.FCStd` with its own part number. An assembly holds
+no geometry: it links the part files with `App::Link`. FreeCAD writes each
+external link in the assembly's `Document.xml` as
+`<XLink file="parts/LE-01-01001-002.FCStd" .../>`, relative to the
+assembly's folder, so a project folder can be moved, synced or copied as a
+whole. Three commands keep it that way. In the BruceWorx build the same
+three are on the BruceWorx menu.
+
+```sh
+# Split a multi-body design (Fusion style) into part files + an assembly.
+# The input is not modified. Numbering is optional.
+FreeCADCmd -- addons/BruceWorx/hooks.py make-external \
+  --input VL-JET-design.FCStd --output-dir VL-JET --parts-dir parts \
+  --program LE --document-type 01
+
+# Which files does an assembly reach, and which links are broken? (plain Python)
+python3 addons/BruceWorx/hooks.py refs --input VL-JET/LE-01-01001-001.FCStd
+
+# Repair broken links by finding the files by name under --search folders.
+python3 addons/BruceWorx/hooks.py resolve-refs \
+  --input VL-JET/LE-01-01001-001.FCStd --search ~/CAD --dry-run
+
+# Copy an assembly with everything it links into an empty folder.
+python3 addons/BruceWorx/hooks.py pack-and-go \
+  --input VL-JET/LE-01-01001-001.FCStd --output-dir /tmp/VL-JET-for-shop
+```
+
+`make-external --input FILE --output-dir DIR [--assembly FILE] [--parts-dir SUB]`
+`[--objects Name,Label] [--program LE --document-type 01 [--config] [--parent] [--revision]]`
+`[--overwrite] [--no-assembly]`
+
+For each body (or other solid root) it writes a part file holding an
+`App::Part` with a copy of the body and what the body depends on, modelled
+about its own origin; the body's placement moves to the link. The container
+gets the BruceWorx part properties (`config/part_properties.json`) and, with
+numbering, its `PartNumber`. The design is saved under the new assembly name
+and each body is replaced by a link in the same place and group. If the
+design has no Assembly, one is created with the first part grounded.
+
+What follows the body to the link: assembly joints (`Reference1`/`2`
+`(Body, ["Face6"])` becomes `(Link, ["Body.Face6"])`), grounded joints, and
+other links to the body (repeated components, link-array patterns). Anything
+else that uses a body, such as a feature in another body or an expression,
+stops the run before any file is written; `--objects` leaves those bodies
+in the assembly. Objects two bodies share, such as a parameter spreadsheet,
+are copied into each part file and listed under `shared_dependencies`:
+after the split, edits to one copy no longer reach the others (top-down
+parameters across files are BW-MOD-02).
+
+With numbering, numbers are allocated like `rename`: the assembly takes a
+new parent drawing (sub `001`), the parts follow as `002`, `003`, ... Files
+are named by part number *without* the revision (`LE-01-01001-002.FCStd`),
+because the revision is metadata, not part of the part number.
+
+`refs --input FILE [--output report.json]` walks the links breadth first
+and lists every file once, broken links (`missing`), absolute links, and
+files it could not read. Exit code `1` when anything is broken.
+
+`resolve-refs --input FILE [--search DIR ...] [--dry-run] [--keep-absolute]`
+looks for each missing file by name under the search folders (default: the
+input's folder). One match is relinked with a relative path; several
+matches are narrowed to the files that hold the linked object, and if that
+still leaves more than one the link is reported as `ambiguous` and left
+alone. Working absolute links are made relative unless `--keep-absolute`.
+A sub-assembly that comes back is walked too, so one run repairs a tree.
+Only `Document.xml` is rewritten; the other members of the zip are copied
+byte for byte, through a temporary file. Close the assembly in FreeCAD
+first (the menu command does this for you).
+
+`pack-and-go --input FILE --output-dir DIR [--overwrite]` copies the
+assembly and every linked file, keeping their positions relative to the
+deepest folder that holds them all (a shared `../lib` comes along as
+`lib/`). Relative links then need no change; absolute ones are rewritten in
+the copies. It refuses a tree with broken links and a folder that already
+has files.
 
 ## Part numbers
 
@@ -311,7 +389,9 @@ pixi run bash addons/BruceWorx/tests/run_freecad_smoke.sh
 That creates a box, exports STEP, imports the STEP back, checks the solid
 volume, writes the tree, renames to `LE-01-01001-001-A` (internal name
 `LE_01_01001_001_A`), then runs `hooks.py` both via `BW_HOOKS_ARGS` and via
-`FreeCADCmd --`.
+`FreeCADCmd --`. It then runs `tests/freecad_filemodel.py`: a multi-body
+jet is made external, reopened (shapes, joints, ground, solve), moved,
+packed and repaired.
 
 Linux CI runs the unit tests in the `hooks-python` job and the smoke script
 after the Linux install step. The self-hosted macOS runner is unchanged.

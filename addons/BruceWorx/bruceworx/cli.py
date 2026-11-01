@@ -28,7 +28,10 @@ from bruceworx.sources import open_number_source
 from bruceworx.step_export import export_step
 from bruceworx.tree import document_tree
 
-COMMANDS = ("export-step", "list-tree", "rename", "next", "preview", "vault")
+COMMANDS = (
+    "export-step", "list-tree", "rename", "next", "preview", "vault",
+    "make-external", "refs", "resolve-refs", "pack-and-go",
+)
 VAULT_ACTIONS = (
     "init", "status", "create", "checkout", "checkin", "undo-checkout",
     "submit", "approve", "reject", "fetch",
@@ -116,6 +119,52 @@ def build_parser() -> argparse.ArgumentParser:
     vault.add_argument("--workspace", default="", help="checkout/fetch: copy the file here")
     vault.add_argument("--comment", default="", help="checkin comment or reject reason")
     vault.add_argument("--actor", default="", help="Who is acting (default: user@host)")
+
+    external = sub.add_parser(
+        "make-external",
+        help="Split a multi-body file into one file per part plus an assembly (needs FreeCAD)",
+    )
+    external.add_argument("--input", required=True, help="Multi-body .FCStd (not modified)")
+    external.add_argument("--output-dir", required=True, help="Folder for the assembly and part files")
+    external.add_argument("--assembly", default="", help="Assembly file (default: <output-dir>/<name>.FCStd)")
+    external.add_argument("--parts-dir", default="", help="Subfolder of --output-dir for part files")
+    external.add_argument(
+        "--objects",
+        default="",
+        help="Comma-separated body Name or Label values (default: every solid root)",
+    )
+    external.add_argument("--program", default="", help="Number the files: program code, for example LE")
+    external.add_argument("--document-type", "--dt", default="", help="Number the files: document type")
+    external.add_argument("--config", default="", help="Numbering JSON (default: local config)")
+    external.add_argument("--revision", default="", help="Override the program's revision")
+    external.add_argument("--parent", default="", help="Number under this parent drawing")
+    external.add_argument("--overwrite", action="store_true", help="Replace existing output files")
+    external.add_argument("--no-assembly", action="store_true", help="Do not create an Assembly object")
+
+    refs = sub.add_parser("refs", help="List the files an .FCStd links, and broken links (no FreeCAD)")
+    refs.add_argument("--input", required=True, help="Assembly or part .FCStd")
+    refs.add_argument("--output", default="", help="Write the report JSON here")
+
+    resolve = sub.add_parser(
+        "resolve-refs",
+        help="Repair broken links by finding the files under search folders (no FreeCAD)",
+    )
+    resolve.add_argument("--input", required=True, help="Assembly .FCStd")
+    resolve.add_argument(
+        "--search",
+        action="append",
+        default=[],
+        help="Folder to search, repeatable (default: the input's folder)",
+    )
+    resolve.add_argument("--dry-run", action="store_true", help="Report only, write nothing")
+    resolve.add_argument("--keep-absolute", action="store_true", help="Leave working absolute links alone")
+    resolve.add_argument("--output", default="", help="Write the report JSON here")
+
+    pack = sub.add_parser("pack-and-go", help="Copy an assembly and every file it links (no FreeCAD)")
+    pack.add_argument("--input", required=True, help="Assembly .FCStd")
+    pack.add_argument("--output-dir", required=True, help="Empty folder to copy into")
+    pack.add_argument("--overwrite", action="store_true", help="Allow a folder that has files")
+    pack.add_argument("--output", default="", help="Write the report JSON here")
     return parser
 
 
@@ -135,6 +184,10 @@ def main(argv: list[str] | None = None) -> int:
             return _number_command(args, allocate=False)
         if args.command == "vault":
             return _vault_command(args)
+        if args.command == "make-external":
+            return _make_external(args)
+        if args.command in ("refs", "resolve-refs", "pack-and-go"):
+            return _refs_command(args)
         print(f"error: unknown command {args.command}", file=sys.stderr)
         return 2
     except SystemExit as exc:
@@ -351,6 +404,66 @@ def _vault_command(args) -> int:
         payload["state"] = vault.items[args.pn].latest.state
     emit(payload)
     return 0
+
+
+def _make_external(args) -> int:
+    freecad_io.require_freecad()
+    _require_fcstd(args.input)
+    from bruceworx.filemodel import make_external, plan_targets  # noqa: PLC0415
+    from bruceworx.numbering import allocate_numbers  # noqa: PLC0415
+
+    if bool(args.program) != bool(args.document_type):
+        raise ValueError("numbering needs both --program and --document-type")
+    doc = freecad_io.open_document(args.input)
+    try:
+        names = _object_names(args.objects)
+        numbers = None
+        if args.program:
+            count = len(plan_targets(doc, names)) + 1
+            source = open_number_source(resolve_config_path(args.config or None, write=True))
+            numbers = allocate_numbers(
+                source,
+                args.program,
+                args.document_type,
+                count,
+                revision=args.revision or None,
+                parent=args.parent or None,
+            )
+        report = make_external(
+            doc,
+            args.output_dir,
+            objects=names,
+            numbers=numbers,
+            assembly_file=args.assembly or None,
+            parts_dir=args.parts_dir,
+            overwrite=args.overwrite,
+            create_assembly=not args.no_assembly,
+        )
+    finally:
+        freecad_io.close_document(doc)
+    report["command"] = "make-external"
+    emit(report)
+    return 0 if report["ok"] else 1
+
+
+def _refs_command(args) -> int:
+    from bruceworx import filerefs  # noqa: PLC0415
+
+    _require_fcstd(args.input)
+    if args.command == "refs":
+        report = filerefs.walk(args.input).as_json()
+    elif args.command == "resolve-refs":
+        report = filerefs.resolve(
+            args.input,
+            args.search or None,
+            apply=not args.dry_run,
+            make_relative=not args.keep_absolute,
+        )
+    else:
+        report = filerefs.pack_and_go(args.input, args.output_dir, overwrite=args.overwrite)
+    report["command"] = args.command
+    emit(report, args.output or None)
+    return 0 if report["ok"] else 1
 
 
 def _default_rename_output(input_path: str, part_number: str) -> str:

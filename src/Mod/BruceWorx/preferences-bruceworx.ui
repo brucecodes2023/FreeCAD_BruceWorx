@@ -80,6 +80,25 @@
        </widget>
       </item>
       <item>
+       <widget class="Gui::PrefCheckBox" name="FileModelTools">
+        <property name="toolTip">
+         <string>On by default. Adds Make Parts External…, Pack and Go… and Fix Broken References… to the BruceWorx menu (one part per file, assemblies link part files by relative path). Needs the hooks add-on. Takes effect on the next start. The make-external, pack-and-go and resolve-refs CLI commands do not depend on this box.</string>
+        </property>
+        <property name="text">
+         <string>One part per file (Make Parts External, Pack and Go, Fix Broken References)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>FileModelTools</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>BruceWorx</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="Gui::PrefCheckBox" name="PatternCommands">
         <property name="toolTip">
          <string>On by default. Adds Rectangular Pattern and Circular Pattern to the PartDesign and Assembly toolbars and to the BruceWorx menu. They pattern features (through PartDesign), bodies and assembly components. Takes effect on the next workbench switch.</string>

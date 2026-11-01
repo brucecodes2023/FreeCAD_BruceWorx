@@ -179,6 +179,13 @@ def assign_part_numbers(
     return _assignment_payload(doc, numbers[0], assignments)
 
 
+def allocate_numbers(source, program, document_type, count, revision=None, parent=None):
+    """``count`` numbers from ``source`` under one parent drawing, the same
+    grouping :func:`assign_part_numbers` uses: with no ``parent`` the first
+    takes a new parent (sub 001) and the rest follow as 002, 003, ..."""
+    return _allocate_group(source, program, document_type, count, revision=revision, parent=parent)
+
+
 def _allocate_group(source, program, document_type, count, revision, parent):
     numbers = []
     active_parent = parent

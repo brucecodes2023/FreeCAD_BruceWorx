@@ -7,12 +7,19 @@ FreeCAD 1.1's Assembly workbench already provides joints (Ondsel solver), ground
 columns) and kinematic simulation (\code{Assembly\_CreateSimulation}, new in 1.1). This track builds on
 those. The file model comes first, because PDM, drawings and BOMs all depend on it.
 
-\begin{epic}{ASM-01}{File model: one part per file}{M1}{\stTodo}{(new)}
+\begin{epic}{ASM-01}{File model: one part per file}{M1}{\stProg}{(new)}
 SolidWorks-style, as decided: every part is its own \code{.FCStd} with its own P/N, and assemblies
 reference parts through \code{App::Link} to external documents with \emph{relative} paths. Tooling:
 \textbf{make external} (split the bodies of a multi-body design file into numbered part files and relink),
 \textbf{pack and go} (copy an assembly with all its references), and a \textbf{broken-reference resolver}.
-\emph{Acceptance:} \code{LE-02001} opens from a moved folder with no broken links.
+\textbf{Built 1 Nov 2026} in the hooks add-on (\file{bruceworx/filemodel.py}, \file{filerefs.py}): CLI
+commands \code{make-external}, \code{refs}, \code{resolve-refs}, \code{pack-and-go}, and the same three
+tools on the BruceWorx menu (off switch: \emph{One part per file}). Joints, the grounded part and other
+links to a body follow it to its link; anything else that uses a body stops the split before a file is
+written. Files are named by P/N without the revision. A FreeCADCmd round trip on a multi-body jet checks
+shapes, joints and solve after the split, after a folder move, after pack and go, and after a repair.
+\emph{Acceptance:} \code{LE-02001} opens from a moved folder with no broken links. Still to run on the
+VL jet and on \code{LE-02001}.
 \end{epic}
 
 \paragraph{Theory: assemblies as a DAG.} Documents form a directed acyclic graph with edges assembly

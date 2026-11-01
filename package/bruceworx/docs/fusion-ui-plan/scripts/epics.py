@@ -128,9 +128,9 @@ EPICS = [
       "Audit Sketcher against Fusion/SolidWorks sketch tools; fix the top gaps.",
       "Gap list approved; top five gaps closed."),
     # Assembly ------------------------------------------------------------
-    E("ASM-01", "File model: one part per file", "M1", "To do", [],
+    E("ASM-01", "File model: one part per file", "M1", "In progress", [],
       "(new)",
-      "Assemblies link external part files; relative paths; 'make external' from a multi-body file.",
+      "Assemblies link external part files; relative paths; 'make external' from a multi-body file. Built 2026-11-01: make-external (joints, ground and repeated links follow the body), refs, resolve-refs and pack-and-go (bruceworx/filemodel.py, filerefs.py), on the BruceWorx menu; 21 unit tests + a FreeCADCmd jet round trip. Still to do: run on the VL jet and LE-02001.",
       "LE-02001 opens from a moved folder with no broken links."),
     E("ASM-02", "Assembly gap audit", "M1", "Done", [],
       "FCB-P2A-01/02",

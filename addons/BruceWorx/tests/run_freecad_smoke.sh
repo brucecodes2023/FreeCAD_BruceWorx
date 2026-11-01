@@ -38,4 +38,9 @@ printf '%s\n' "$preview" | grep -q 'LE-01-01001-001-A'
 # Preview must not create or rewrite the local counter.
 test ! -e "$root/config/numbering.json"
 
+echo "BruceWorx file model: make external, moved folder, pack and go, resolve-refs"
+BW_FILEMODEL_DIR="${outdir}/filemodel" "$cmd" "$root/tests/freecad_filemodel.py" 2>&1 \
+  | tee "${outdir}/filemodel.log"
+grep -q 'BW_FILEMODEL PASS' "${outdir}/filemodel.log"
+
 echo "BW_SMOKE CLI PASS"
